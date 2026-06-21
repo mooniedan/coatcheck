@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { applyFeedback } from '@/lib/thresholds';
+import { isSupabaseConfigured } from '@/lib/supabase/env';
 import type { ComfortModel, Verdict, WeatherSnapshot } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -18,6 +19,9 @@ interface FeedbackBody {
 // POST /api/feedback → record a verdict and nudge the profile's comfort model.
 // Requires a signed-in user who owns the profile. All writes use the service_role client.
 export async function POST(request: NextRequest) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+  }
   const supabase = await createClient();
   const {
     data: { user },

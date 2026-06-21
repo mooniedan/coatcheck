@@ -5,6 +5,10 @@
 .env.local
 .env.*.local
 
+# supabase cli
+supabase/.temp/
+supabase/.branches/
+
 # node / next
 node_modules/
 .next/

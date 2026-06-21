@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isSupabaseConfigured } from '@/lib/supabase/env';
 
 export const runtime = 'nodejs';
 
@@ -9,6 +10,11 @@ export const runtime = 'nodejs';
 // default "self" profile from the Google display name. Provisioning uses the service_role
 // client (RLS-bypassing) inside this handler, per the project's mutation convention.
 export async function GET() {
+  // Supabase not configured yet — treat the visitor as signed out so the home page renders.
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ user: null, account: null, profiles: [] });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

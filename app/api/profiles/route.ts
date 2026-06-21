@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isSupabaseConfigured } from '@/lib/supabase/env';
 
 export const runtime = 'nodejs';
+
+// When Supabase isn't configured there's no auth — behave as "not signed in".
+const signInRequired = () => NextResponse.json({ error: 'Sign in required' }, { status: 401 });
 
 // Family profiles for the signed-in account. All mutations use the service_role client
 // after verifying ownership.
@@ -17,6 +21,7 @@ async function ownerAccountId(userId: string) {
 }
 
 export async function GET() {
+  if (!isSupabaseConfigured()) return signInRequired();
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,6 +42,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSupabaseConfigured()) return signInRequired();
   const supabase = await createClient();
   const {
     data: { user },
@@ -66,6 +72,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!isSupabaseConfigured()) return signInRequired();
   const supabase = await createClient();
   const {
     data: { user },
