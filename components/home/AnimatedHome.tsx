@@ -37,11 +37,13 @@ type Phase = 'tour' | 'rest' | 'scrub';
 export default function AnimatedHome({
   location,
   rec,
+  signedIn,
   onFeedback,
   feedbackMsg,
 }: {
   location: ResolvedLocation;
   rec: Recommendation;
+  signedIn: boolean;
   onFeedback: (v: Verdict) => void;
   feedbackMsg: string | null;
 }) {
@@ -202,15 +204,19 @@ export default function AnimatedHome({
           <span className="text-xs text-on-surface-variant">{rec.weather.description}</span>
         </div>
         <Timeline t={t} prominent={controls} onScrub={onScrub} />
-        <FeedbackRow onFeedback={onFeedback} />
-        {feedbackMsg && <p className="px-5 pb-4 text-sm text-on-surface-variant">{feedbackMsg}</p>}
+        <FeedbackRow onFeedback={onFeedback} disabled={!signedIn} />
+        {!signedIn ? (
+          <p className="px-5 pb-4 text-sm text-on-surface-variant">Sign in to add feedback.</p>
+        ) : feedbackMsg ? (
+          <p className="px-5 pb-4 text-sm text-on-surface-variant">{feedbackMsg}</p>
+        ) : null}
       </div>
     </div>
   );
 }
 
 // ── Feedback row — icon tones (snowflake / sun / check) ────────
-function FeedbackRow({ onFeedback }: { onFeedback: (v: Verdict) => void }) {
+function FeedbackRow({ onFeedback, disabled }: { onFeedback: (v: Verdict) => void; disabled?: boolean }) {
   const items = [
     { id: 'too_cold' as const, icon: 'snowflake' as const, label: 'Too cold', tone: 'cool' },
     { id: 'too_hot' as const, icon: 'sun' as const, label: 'Too hot', tone: 'warm' },
@@ -227,8 +233,11 @@ function FeedbackRow({ onFeedback }: { onFeedback: (v: Verdict) => void }) {
         <button
           key={it.id}
           aria-label={it.label}
+          disabled={disabled}
           onClick={() => onFeedback(it.id)}
-          className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-transparent text-sm font-medium transition-shadow hover:shadow-[var(--md-elev-1)] ${tones[it.tone]}`}
+          className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-transparent text-sm font-medium transition-shadow ${tones[it.tone]} ${
+            disabled ? 'cursor-not-allowed opacity-40' : 'hover:shadow-[var(--md-elev-1)]'
+          }`}
         >
           <Icon name={it.icon} size={20} strokeWidth={1.8} />
           <span className="hidden sm:inline">{it.label}</span>

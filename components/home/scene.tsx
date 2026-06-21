@@ -617,23 +617,27 @@ function Figure({ t, walking }: { t: number; walking: boolean }) {
             <circle cx="98" cy="128" r="5.5" fill={SKIN} />
           </g>
         </svg>
-        {/* Umbrella */}
+        {/* Umbrella — canopy over the head, handle running down to the right hand grip */}
         <div
           style={{
             position: 'absolute',
-            left: '50%',
-            top: -28,
-            transform: 'translateX(-50%)',
+            left: -2,
+            top: -22,
             opacity: o.umbrella,
             transition: 'opacity 0.5s ease',
+            transformOrigin: '100px 150px',
             animation: walking ? 'ahsUmbrella 2.4s ease-in-out infinite' : 'none',
           }}
         >
-          <svg width="90" height="90" viewBox="0 0 90 90">
-            <path d="M8 42 Q45 6 82 42 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.4" />
-            <path d="M22 42 Q45 22 68 42" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
-            <line x1="45" y1="42" x2="45" y2="78" stroke="#3D2A1F" strokeWidth="2" strokeLinecap="round" />
-            <path d="M45 78 Q45 84 50 84" fill="none" stroke="#3D2A1F" strokeWidth="2" strokeLinecap="round" />
+          <svg width="120" height="160" viewBox="0 0 120 160">
+            {/* Canopy */}
+            <path d="M28 52 Q70 12 112 52 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.4" />
+            <path d="M42 52 Q70 30 98 52" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
+            <line x1="70" y1="52" x2="70" y2="44" stroke="#6E2424" strokeWidth="1.4" strokeLinecap="round" />
+            {/* Handle: canopy centre → hand grip */}
+            <path d="M70 52 Q73 104 100 150" fill="none" stroke="#3D2A1F" strokeWidth="2.2" strokeLinecap="round" />
+            {/* J-hook grip at the hand */}
+            <path d="M100 150 Q100 157 93 157" fill="none" stroke="#3D2A1F" strokeWidth="2.2" strokeLinecap="round" />
           </svg>
         </div>
       </div>

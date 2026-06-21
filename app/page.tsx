@@ -24,11 +24,13 @@ export default function Home() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeProfile, setActiveProfile] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     fetch('/api/me')
       .then((r) => r.json())
       .then((data) => {
+        setSignedIn(Boolean(data.user));
         setProfiles(data.profiles ?? []);
         if (data.profiles?.length) setActiveProfile(data.profiles[0].id);
       })
@@ -160,6 +162,7 @@ export default function Home() {
         <AnimatedHome
           location={location}
           rec={rec}
+          signedIn={signedIn}
           onFeedback={sendFeedback}
           feedbackMsg={feedbackMsg}
         />

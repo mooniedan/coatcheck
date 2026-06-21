@@ -113,8 +113,8 @@ body {
 @keyframes ahsArmL { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(10deg); } }
 @keyframes ahsArmR { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(-10deg); } }
 @keyframes ahsUmbrella {
-  0%, 100% { transform: translateX(-50%) rotate(-1.5deg); }
-  50% { transform: translateX(-50%) rotate(1.5deg); }
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
 }
 @keyframes ahsRain {
   0% { transform: translateY(-30px); opacity: 0; }
