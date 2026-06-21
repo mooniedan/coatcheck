@@ -1,0 +1,67 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { applyFeedback } from '@/lib/thresholds';
+import type { ComfortModel, Verdict, WeatherSnapshot } from '@/lib/types';
+
+export const runtime = 'nodejs';
+
+const VERDICTS: Verdict[] = ['too_cold', 'too_hot', 'just_right'];
+
+interface FeedbackBody {
+  profileId: string;
+  verdict: Verdict;
+  weather: WeatherSnapshot;
+  recommendedItemIds: string[];
+}
+
+// POST /api/feedback → record a verdict and nudge the profile's comfort model.
+// Requires a signed-in user who owns the profile. All writes use the service_role client.
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+
+  const body = (await request.json()) as Partial<FeedbackBody>;
+  if (!body.profileId || !body.verdict || !VERDICTS.includes(body.verdict) || !body.weather) {
+    return NextResponse.json({ error: 'Invalid feedback payload' }, { status: 400 });
+  }
+
+  try {
+    const admin = createAdminClient();
+
+    // Verify the profile belongs to the signed-in user's account.
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id, comfort_model, account_id, accounts!inner(user_id, cohort)')
+      .eq('id', body.profileId)
+      .maybeSingle();
+
+    const account = profile?.accounts as unknown as { user_id: string; cohort: string } | undefined;
+    if (!profile || account?.user_id !== user.id) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    }
+
+    // Persist the feedback row (cohort denormalized for the Phase 3 aggregation job).
+    await admin.from('feedback').insert({
+      profile_id: body.profileId,
+      cohort: account.cohort,
+      feels_like_c: body.weather.feelsLikeC,
+      conditions: body.weather,
+      recommended_item_ids: body.recommendedItemIds ?? [],
+      verdict: body.verdict,
+    });
+
+    // Nudge the profile's comfort model.
+    const current = (profile.comfort_model as ComfortModel | null) ?? { offsetC: 0 };
+    const updated = applyFeedback(current, body.verdict);
+    await admin.from('profiles').update({ comfort_model: updated }).eq('id', body.profileId);
+
+    return NextResponse.json({ ok: true, comfort: updated });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Could not save feedback';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

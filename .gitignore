@@ -1,0 +1,16 @@
+.claude
+
+# secrets / env
+.env
+.env.local
+.env.*.local
+
+# node / next
+node_modules/
+.next/
+out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+coverage/
+npm-debug.log*
+.DS_Store
