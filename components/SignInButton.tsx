@@ -41,10 +41,10 @@ export default function SignInButton() {
 
   return email ? (
     <div className="flex items-center gap-3 text-sm">
-      <span className="hidden text-ink-3 sm:inline">{email}</span>
+      <span className="hidden text-on-surface-variant sm:inline">{email}</span>
       <button
         onClick={signOut}
-        className="rounded-full border border-ink-3/30 px-3 py-1 font-medium hover:bg-paper-2"
+        className="rounded-full border border-outline-variant px-4 py-1.5 font-medium text-on-surface-variant transition-colors hover:bg-surface-high"
       >
         Sign out
       </button>
@@ -52,7 +52,7 @@ export default function SignInButton() {
   ) : (
     <button
       onClick={signIn}
-      className="rounded-full bg-sky px-4 py-1.5 text-sm font-semibold text-white hover:bg-sky-deep"
+      className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90"
     >
       Sign in with Google
     </button>

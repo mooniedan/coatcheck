@@ -98,10 +98,12 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">Coat Check</h1>
+        <h1 className="text-2xl font-medium tracking-tight text-on-surface sm:text-3xl">
+          Coat Check
+        </h1>
         <div className="flex items-center gap-3">
           {profiles.length > 0 && (
-            <Link href="/family" className="text-sm font-medium text-sky-deep hover:underline">
+            <Link href="/family" className="text-sm font-medium text-primary hover:underline">
               Family
             </Link>
           )}
@@ -109,43 +111,43 @@ export default function Home() {
         </div>
       </header>
 
-      <p className="text-ink-3">What should you wear today? Tell me where you are.</p>
+      <p className="text-on-surface-variant">What should you wear today? Tell me where you are.</p>
 
       <form onSubmit={searchCity} className="flex flex-col gap-2 sm:flex-row">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="City or address…"
-          className="flex-1 rounded-lg border border-ink-3/30 bg-white px-4 py-2.5 outline-none focus:border-sky"
+          className="flex-1 rounded-full border border-outline-variant bg-surface-lowest px-5 py-3 text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/70 focus:border-primary"
         />
         <div className="flex gap-2">
           <button
             type="submit"
-            className="flex-1 rounded-lg bg-sky px-4 py-2.5 font-semibold text-white hover:bg-sky-deep sm:flex-none"
+            className="flex-1 rounded-full bg-primary px-6 py-3 font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90 sm:flex-none"
           >
             Check
           </button>
           <button
             type="button"
             onClick={useMyLocation}
-            className="rounded-lg border border-ink-3/30 px-4 py-2.5 font-medium hover:bg-paper-2"
+            className="inline-flex items-center gap-1.5 rounded-full bg-surface-high px-4 py-3 font-medium text-on-surface transition-colors hover:bg-surface-highest"
           >
-            📍 Me
+            <span aria-hidden>📍</span> Me
           </button>
         </div>
       </form>
 
       {profiles.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-ink-3">For:</span>
+          <span className="text-on-surface-variant">For:</span>
           {profiles.map((p) => (
             <button
               key={p.id}
               onClick={() => setActiveProfile(p.id)}
-              className={`rounded-full px-3 py-1 font-medium ${
+              className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
                 activeProfile === p.id
-                  ? 'bg-ink text-white'
-                  : 'border border-ink-3/30 hover:bg-paper-2'
+                  ? 'bg-secondary-container text-on-secondary-container'
+                  : 'border border-outline-variant text-on-surface-variant hover:bg-surface-high'
               }`}
             >
               {p.display_name}
@@ -154,8 +156,10 @@ export default function Home() {
         </div>
       )}
 
-      {loading && <p className="text-ink-3">Checking the skies…</p>}
-      {error && <p className="rounded-lg bg-bonnet/10 px-4 py-3 text-bonnet">{error}</p>}
+      {loading && <p className="text-on-surface-variant">Checking the skies…</p>}
+      {error && (
+        <p className="rounded-2xl bg-error-container px-4 py-3 text-on-error-container">{error}</p>
+      )}
 
       {rec && location && !loading && (
         <section className="flex flex-col gap-5">
@@ -165,14 +169,29 @@ export default function Home() {
             <CategoryRow key={category} category={category} items={rec.itemsByCategory[category]} />
           ))}
 
-          <div className="mt-2 rounded-xl bg-paper-2 p-4">
-            <p className="mb-3 text-sm font-medium text-ink-2">How did this feel?</p>
-            <div className="flex flex-wrap gap-2">
-              <FeedbackChip label="🥶 Too cold" onClick={() => sendFeedback('too_cold')} />
-              <FeedbackChip label="👍 Just right" onClick={() => sendFeedback('just_right')} />
-              <FeedbackChip label="🥵 Too hot" onClick={() => sendFeedback('too_hot')} />
+          <div className="mt-2 rounded-[28px] border border-outline-variant bg-surface-low p-5">
+            <p className="mb-3 text-sm font-medium text-on-surface-variant">How did this feel?</p>
+            <div className="flex flex-wrap gap-2.5">
+              <FeedbackChip
+                label="Too cold"
+                emoji="🥶"
+                tone="cool"
+                onClick={() => sendFeedback('too_cold')}
+              />
+              <FeedbackChip
+                label="Just right"
+                emoji="👍"
+                tone="just"
+                onClick={() => sendFeedback('just_right')}
+              />
+              <FeedbackChip
+                label="Too hot"
+                emoji="🥵"
+                tone="warm"
+                onClick={() => sendFeedback('too_hot')}
+              />
             </div>
-            {feedbackMsg && <p className="mt-3 text-sm text-ink-3">{feedbackMsg}</p>}
+            {feedbackMsg && <p className="mt-3 text-sm text-on-surface-variant">{feedbackMsg}</p>}
           </div>
         </section>
       )}
@@ -183,16 +202,16 @@ export default function Home() {
 function WeatherCard({ location, rec }: { location: ResolvedLocation; rec: Recommendation }) {
   const w = rec.weather;
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-sky to-dusk p-5 text-white">
-      <p className="text-sm opacity-90">
+    <div className="rounded-[28px] bg-gradient-to-br from-primary to-secondary p-6 text-on-primary shadow-[var(--md-elev-2)]">
+      <p className="text-sm font-medium opacity-90">
         {location.name}
         {location.admin1 ? `, ${location.admin1}` : ''}
       </p>
       <div className="mt-1 flex items-end gap-3">
-        <span className="text-4xl font-bold">{Math.round(w.tempC)}°</span>
+        <span className="text-5xl font-semibold leading-none">{Math.round(w.tempC)}°</span>
         <span className="pb-1 opacity-90">feels like {Math.round(w.feelsLikeC)}°</span>
       </div>
-      <p className="mt-1 text-sm opacity-90">
+      <p className="mt-2 text-sm opacity-90">
         {w.description} · 💨 {Math.round(w.windKph)} km/h · 💧 {w.precipitationProbability}%
       </p>
     </div>
@@ -203,14 +222,21 @@ function CategoryRow({ category, items }: { category: Category; items: ClothingI
   if (items.length === 0) return null;
   return (
     <div>
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-3">{category}</h2>
-      <div className="flex flex-wrap gap-2">
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary">
+        {category}
+      </h2>
+      <div className="flex flex-wrap gap-2.5">
         {items.map((item) => (
           <span
             key={item.id}
-            className="flex items-center gap-2 rounded-xl border border-ink-3/15 bg-white px-3 py-2 text-sm font-medium shadow-sm"
+            className="flex items-center gap-2 rounded-2xl border border-outline-variant bg-surface-lowest px-3 py-2 text-sm font-medium text-on-surface shadow-[var(--md-elev-1)]"
           >
-            <span aria-hidden>{item.icon}</span>
+            <span
+              aria-hidden
+              className="flex h-7 w-7 items-center justify-center rounded-[10px] bg-primary-container text-base"
+            >
+              {item.icon}
+            </span>
             {item.name}
           </span>
         ))}
@@ -219,12 +245,29 @@ function CategoryRow({ category, items }: { category: Category; items: ClothingI
   );
 }
 
-function FeedbackChip({ label, onClick }: { label: string; onClick: () => void }) {
+const FEEDBACK_TONES = {
+  cool: 'bg-cool-container text-cool',
+  warm: 'bg-warm-container text-warm',
+  just: 'bg-just-container text-just',
+} as const;
+
+function FeedbackChip({
+  label,
+  emoji,
+  tone,
+  onClick,
+}: {
+  label: string;
+  emoji: string;
+  tone: keyof typeof FEEDBACK_TONES;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
-      className="rounded-full border border-ink-3/30 bg-white px-4 py-2 text-sm font-medium hover:bg-paper-3"
+      className={`inline-flex items-center gap-2 rounded-2xl border-2 border-transparent px-4 py-2.5 text-sm font-medium transition-shadow hover:shadow-[var(--md-elev-1)] ${FEEDBACK_TONES[tone]}`}
     >
+      <span aria-hidden>{emoji}</span>
       {label}
     </button>
   );

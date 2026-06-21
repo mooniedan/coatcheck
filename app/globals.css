@@ -2,8 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────
+   Material 3 "warm clay" design tokens — ported from the Claude
+   Design project (shared/theme.css, seed #8E4B2C). Consumed by
+   tailwind.config.ts color/font tokens and inline var() usage.
+   ───────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
+
+  /* Primary (clay) */
+  --md-primary: #8e4b2c;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #ffdbc9;
+  --md-on-primary-container: #341000;
+
+  /* Secondary (warm taupe) */
+  --md-secondary: #77584c;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #ffdbcd;
+  --md-on-secondary-container: #2c160c;
+
+  /* Tertiary (muted ochre) */
+  --md-tertiary: #6a5d2e;
+  --md-tertiary-container: #f4e1a6;
+
+  /* Status / semantic */
+  --md-error: #ba1a1a;
+  --md-on-error: #ffffff;
+  --md-error-container: #ffdad6;
+  --md-on-error-container: #410002;
+
+  --cc-cool: #3c6e8a; /* "too cold" tint */
+  --cc-cool-container: #d3e4f0;
+  --cc-warm: #b8702f; /* "too hot" tint */
+  --cc-warm-container: #f8dfc2;
+  --cc-just-right: #4c6b45; /* "perfect" tint */
+  --cc-just-right-container: #dce8d2;
+
+  /* Surfaces (warm whites & beiges) */
+  --md-surface: #fff8f5;
+  --md-surface-container-lowest: #ffffff;
+  --md-surface-container-low: #fbf1eb;
+  --md-surface-container: #f5ebe4;
+  --md-surface-container-high: #efe5de;
+  --md-surface-container-highest: #eadfd8;
+  --md-on-surface: #221a14;
+  --md-on-surface-variant: #52443b;
+
+  --md-outline: #847469;
+  --md-outline-variant: #d6c4b8;
+
+  --md-inverse-surface: #382e27;
+  --md-inverse-on-surface: #feeee4;
+
+  --md-scrim: rgba(0, 0, 0, 0.45);
+
+  /* Elevation */
+  --md-elev-1: 0 1px 2px rgba(40, 20, 8, 0.1), 0 1px 3px 1px rgba(40, 20, 8, 0.06);
+  --md-elev-2: 0 1px 2px rgba(40, 20, 8, 0.1), 0 2px 6px 2px rgba(40, 20, 8, 0.08);
+  --md-elev-3: 0 4px 8px 3px rgba(40, 20, 8, 0.1), 0 1px 3px rgba(40, 20, 8, 0.1);
+
+  /* Type — Roboto Flex (loaded via next/font, see layout.tsx) */
+  --cc-font: var(--font-roboto-flex), 'Roboto', 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Warm page background used app-wide */
+  --cc-page-bg: radial-gradient(1200px 600px at 50% -10%, #f2e5da 0%, #e5dad2 60%, #dac8bc 100%);
 }
 
 html,
@@ -13,6 +76,12 @@ body {
 }
 
 body {
-  @apply bg-paper text-ink font-body;
   min-height: 100dvh;
+  font-family: var(--cc-font);
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--md-on-surface);
+  background: var(--cc-page-bg);
+  background-attachment: fixed;
 }
