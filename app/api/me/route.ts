@@ -25,6 +25,14 @@ export async function GET() {
   try {
     const admin = createAdminClient();
 
+    // Resolve any elevated role granted to this email (admin / superadmin).
+    const { data: grant } = await admin
+      .from('admin_emails')
+      .select('role')
+      .eq('email', user.email ?? '')
+      .maybeSingle();
+    const role: string = grant?.role ?? 'user';
+
     // Ensure an account exists for this Google identity.
     let { data: account } = await admin
       .from('accounts')
@@ -59,14 +67,14 @@ export async function GET() {
         .select('id, display_name, relationship, comfort_model')
         .single();
       return NextResponse.json({
-        user: { id: user.id, email: user.email },
+        user: { id: user.id, email: user.email, role },
         account,
         profiles: created.data ? [created.data] : [],
       });
     }
 
     return NextResponse.json({
-      user: { id: user.id, email: user.email },
+      user: { id: user.id, email: user.email, role },
       account,
       profiles: profiles ?? [],
     });

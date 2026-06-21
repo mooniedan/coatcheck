@@ -617,27 +617,30 @@ function Figure({ t, walking }: { t: number; walking: boolean }) {
             <circle cx="98" cy="128" r="5.5" fill={SKIN} />
           </g>
         </svg>
-        {/* Umbrella — canopy over the head, handle running down to the right hand grip */}
+        {/* Umbrella — held in the right hand: a straight pole from the hand grip up to a
+            wide canopy over the head. Drawn in the figure's own 130×220 coordinates so the
+            grip lands exactly on the right hand (98,128); wobble rotates about that grip. */}
         <div
           style={{
             position: 'absolute',
-            left: -2,
-            top: -22,
+            inset: 0,
             opacity: o.umbrella,
             transition: 'opacity 0.5s ease',
-            transformOrigin: '100px 150px',
+            transformOrigin: '98px 128px',
             animation: walking ? 'ahsUmbrella 2.4s ease-in-out infinite' : 'none',
           }}
         >
-          <svg width="120" height="160" viewBox="0 0 120 160">
-            {/* Canopy */}
-            <path d="M28 52 Q70 12 112 52 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.4" />
-            <path d="M42 52 Q70 30 98 52" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
-            <line x1="70" y1="52" x2="70" y2="44" stroke="#6E2424" strokeWidth="1.4" strokeLinecap="round" />
-            {/* Handle: canopy centre → hand grip */}
-            <path d="M70 52 Q73 104 100 150" fill="none" stroke="#3D2A1F" strokeWidth="2.2" strokeLinecap="round" />
+          <svg width="130" height="220" viewBox="0 0 130 220" style={{ position: 'absolute', inset: 0 }}>
+            {/* Canopy — wide enough to shelter the figure */}
+            <path d="M18 54 Q68 6 118 54 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.6" />
+            <path d="M18 54 Q38 46 58 54 Q68 49 78 54 Q98 46 118 54" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.4" />
+            <path d="M36 54 Q68 30 100 54" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
+            {/* Finial */}
+            <line x1="68" y1="30" x2="68" y2="22" stroke="#6E2424" strokeWidth="1.6" strokeLinecap="round" />
+            {/* Straight pole: canopy → right-hand grip */}
+            <line x1="68" y1="33" x2="98" y2="127" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
             {/* J-hook grip at the hand */}
-            <path d="M100 150 Q100 157 93 157" fill="none" stroke="#3D2A1F" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M98 127 q0 7 -6 7" fill="none" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
           </svg>
         </div>
       </div>
