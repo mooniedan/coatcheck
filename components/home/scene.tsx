@@ -617,10 +617,10 @@ function Figure({ t, walking }: { t: number; walking: boolean }) {
             <circle cx="98" cy="128" r="5.5" fill={SKIN} />
           </g>
         </svg>
-        {/* Umbrella — a straight, vertical pole held at the right hand (x=98), running up
-            the figure's side to a wide canopy centred over the head. Drawn in the figure's
-            own 130×220 coordinates so the pole bottom meets the right hand (98,128); wobble
-            rotates about that grip. */}
+        {/* Umbrella — a straight, vertical pole held at the right hand (x=98) running up to
+            the MIDDLE of a canopy held high and off to the side, so it clears the head. Drawn
+            in the figure's own 130×220 coordinates; the pole bottom meets the right hand
+            (98,128) and wobble rotates about that grip. */}
         <div
           style={{
             position: 'absolute',
@@ -632,14 +632,14 @@ function Figure({ t, walking }: { t: number; walking: boolean }) {
           }}
         >
           <svg width="130" height="220" viewBox="0 0 130 220" style={{ position: 'absolute', inset: 0 }}>
-            {/* Canopy — wide, centred over the head */}
-            <path d="M22 52 Q68 6 114 52 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.6" />
-            <path d="M22 52 Q40 44 58 52 Q68 47 78 52 Q96 44 114 52" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.4" />
-            <path d="M38 52 Q68 28 98 52" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
+            {/* Canopy — centred on the pole (x=98), held high, clear of the head */}
+            <path d="M81 46 Q98 6 115 46 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.6" />
+            <path d="M81 46 Q89 40 98 46 Q107 40 115 46" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.4" />
+            <path d="M86 46 Q98 24 110 46" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
             {/* Finial */}
-            <line x1="68" y1="28" x2="68" y2="20" stroke="#6E2424" strokeWidth="1.6" strokeLinecap="round" />
-            {/* Straight vertical pole down the figure's side to the hand */}
-            <line x1="98" y1="50" x2="98" y2="128" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
+            <line x1="98" y1="24" x2="98" y2="16" stroke="#6E2424" strokeWidth="1.6" strokeLinecap="round" />
+            {/* Straight vertical pole: middle of canopy → right-hand grip */}
+            <line x1="98" y1="46" x2="98" y2="128" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
           </svg>
         </div>
       </div>
