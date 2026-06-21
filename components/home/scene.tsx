@@ -617,10 +617,10 @@ function Figure({ t, walking }: { t: number; walking: boolean }) {
             <circle cx="98" cy="128" r="5.5" fill={SKIN} />
           </g>
         </svg>
-        {/* Umbrella — a straight, vertical pole held at the right hand (x=98) running up to
-            the MIDDLE of a canopy held high and off to the side, so it clears the head. Drawn
-            in the figure's own 130×220 coordinates; the pole bottom meets the right hand
-            (98,128) and wobble rotates about that grip. */}
+        {/* Umbrella — a wide canopy (original size, held high) centred on a straight vertical
+            pole. The pole is held at the right hand (x=98) and meets the middle of the canopy,
+            so the canopy sits up and to the right. The svg viewport extends past the 130-wide
+            figure so the canopy can reach right of it. Wobble rotates about the hand grip. */}
         <div
           style={{
             position: 'absolute',
@@ -631,13 +631,13 @@ function Figure({ t, walking }: { t: number; walking: boolean }) {
             animation: walking ? 'ahsUmbrella 2.4s ease-in-out infinite' : 'none',
           }}
         >
-          <svg width="130" height="220" viewBox="0 0 130 220" style={{ position: 'absolute', inset: 0 }}>
-            {/* Canopy — centred on the pole (x=98), held high, clear of the head */}
-            <path d="M81 46 Q98 6 115 46 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.6" />
-            <path d="M81 46 Q89 40 98 46 Q107 40 115 46" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.4" />
-            <path d="M86 46 Q98 24 110 46" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
+          <svg width="150" height="220" viewBox="0 0 150 220" style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
+            {/* Canopy — wide, centred on the pole at x=98, held high */}
+            <path d="M54 46 Q98 4 142 46 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.6" />
+            <path d="M54 46 Q76 38 98 46 Q120 38 142 46" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.4" />
+            <path d="M64 46 Q98 22 132 46" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
             {/* Finial */}
-            <line x1="98" y1="24" x2="98" y2="16" stroke="#6E2424" strokeWidth="1.6" strokeLinecap="round" />
+            <line x1="98" y1="22" x2="98" y2="14" stroke="#6E2424" strokeWidth="1.6" strokeLinecap="round" />
             {/* Straight vertical pole: middle of canopy → right-hand grip */}
             <line x1="98" y1="46" x2="98" y2="128" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
           </svg>
