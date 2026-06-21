@@ -71,7 +71,7 @@ export default function Home() {
     );
   }
 
-  async function sendFeedback(verdict: Verdict) {
+  async function sendFeedback(verdict: Verdict, wornItemIds?: string[]) {
     if (!activeProfile || !rec) {
       setFeedbackMsg('Sign in and pick a profile to tune your recommendations.');
       return;
@@ -87,6 +87,7 @@ export default function Home() {
         verdict,
         weather: rec.weather,
         recommendedItemIds,
+        wornItemIds,
       }),
     });
     setFeedbackMsg(res.ok ? 'Thanks — noted for next time.' : 'Could not save feedback.');

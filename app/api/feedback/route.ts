@@ -14,6 +14,9 @@ interface FeedbackBody {
   verdict: Verdict;
   weather: WeatherSnapshot;
   recommendedItemIds: string[];
+  // Optional: what the wearer actually wore that felt comfortable (set when correcting a
+  // too_cold / too_hot verdict). A stronger learning signal than the verdict alone.
+  wornItemIds?: string[];
 }
 
 // POST /api/feedback → record a verdict and nudge the profile's comfort model.
@@ -55,6 +58,7 @@ export async function POST(request: NextRequest) {
       feels_like_c: body.weather.feelsLikeC,
       conditions: body.weather,
       recommended_item_ids: body.recommendedItemIds ?? [],
+      worn_item_ids: body.wornItemIds ?? [],
       verdict: body.verdict,
     });
 

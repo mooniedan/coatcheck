@@ -17,6 +17,7 @@ import {
 } from './scene';
 import { Icon } from '@/components/ui/Icon';
 import { getItemIcon } from '@/lib/itemIcons';
+import { DEFAULT_CATALOG } from '@/lib/catalog';
 import type { Category, ClothingItem, Recommendation, ResolvedLocation, Verdict } from '@/lib/types';
 
 const CATEGORIES: Category[] = ['Tops', 'Bottoms', 'Outerwear', 'Accessories'];
@@ -44,7 +45,7 @@ export default function AnimatedHome({
   location: ResolvedLocation;
   rec: Recommendation;
   signedIn: boolean;
-  onFeedback: (v: Verdict) => void;
+  onFeedback: (v: Verdict, wornItemIds?: string[]) => void;
   feedbackMsg: string | null;
 }) {
   const [phase, setPhase] = useState<Phase>('tour');
@@ -54,6 +55,24 @@ export default function AnimatedHome({
   const [exploded, setExploded] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [lastInteract, setLastInteract] = useState(0);
+
+  // Optional "what felt comfortable?" follow-up after a too_cold / too_hot verdict.
+  const [comfortFor, setComfortFor] = useState<Verdict | null>(null);
+  const [worn, setWorn] = useState<string[]>([]);
+
+  const handleVerdict = (v: Verdict) => {
+    if (v === 'just_right') {
+      onFeedback('just_right');
+      return;
+    }
+    // Offer the comfort picker before recording a mismatch.
+    setComfortFor(v);
+    setWorn([]);
+  };
+  const closeComfort = () => {
+    setComfortFor(null);
+    setWorn([]);
+  };
 
   const tourStart = useRef<number | null>(null);
   const rafRef = useRef(0);
@@ -204,8 +223,24 @@ export default function AnimatedHome({
           <span className="text-xs text-on-surface-variant">{rec.weather.description}</span>
         </div>
         <Timeline t={t} prominent={controls} onScrub={onScrub} />
-        <FeedbackRow onFeedback={onFeedback} disabled={!signedIn} />
-        {!signedIn ? (
+        <FeedbackRow onFeedback={handleVerdict} disabled={!signedIn} active={comfortFor} />
+        {signedIn && comfortFor ? (
+          <ComfortPicker
+            verdict={comfortFor}
+            worn={worn}
+            onToggle={(id) =>
+              setWorn((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]))
+            }
+            onSave={() => {
+              onFeedback(comfortFor, worn);
+              closeComfort();
+            }}
+            onSkip={() => {
+              onFeedback(comfortFor);
+              closeComfort();
+            }}
+          />
+        ) : !signedIn ? (
           <p className="px-5 pb-4 text-sm text-on-surface-variant">Sign in to add feedback.</p>
         ) : feedbackMsg ? (
           <p className="px-5 pb-4 text-sm text-on-surface-variant">{feedbackMsg}</p>
@@ -216,33 +251,121 @@ export default function AnimatedHome({
 }
 
 // ── Feedback row — icon tones (snowflake / sun / check) ────────
-function FeedbackRow({ onFeedback, disabled }: { onFeedback: (v: Verdict) => void; disabled?: boolean }) {
+function FeedbackRow({
+  onFeedback,
+  disabled,
+  active,
+}: {
+  onFeedback: (v: Verdict) => void;
+  disabled?: boolean;
+  active?: Verdict | null;
+}) {
   const items = [
     { id: 'too_cold' as const, icon: 'snowflake' as const, label: 'Too cold', tone: 'cool' },
     { id: 'too_hot' as const, icon: 'sun' as const, label: 'Too hot', tone: 'warm' },
     { id: 'just_right' as const, icon: 'check' as const, label: 'Perfect', tone: 'just' },
   ];
-  const tones: Record<string, string> = {
-    cool: 'bg-cool-container text-cool',
-    warm: 'bg-warm-container text-warm',
-    just: 'bg-just-container text-just',
+  const tones: Record<string, { cls: string; ring: string }> = {
+    cool: { cls: 'bg-cool-container text-cool', ring: 'border-cool' },
+    warm: { cls: 'bg-warm-container text-warm', ring: 'border-warm' },
+    just: { cls: 'bg-just-container text-just', ring: 'border-just' },
   };
   return (
     <div className="flex gap-2.5 px-5 pb-4 pt-2">
-      {items.map((it) => (
+      {items.map((it) => {
+        const tone = tones[it.tone];
+        const isActive = active === it.id;
+        return (
+          <button
+            key={it.id}
+            aria-label={it.label}
+            disabled={disabled}
+            onClick={() => onFeedback(it.id)}
+            className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border-2 text-sm font-medium transition-shadow ${tone.cls} ${
+              isActive ? tone.ring : 'border-transparent'
+            } ${disabled ? 'cursor-not-allowed opacity-40' : 'hover:shadow-[var(--md-elev-1)]'}`}
+          >
+            <Icon name={it.icon} size={20} strokeWidth={1.8} />
+            <span className="hidden sm:inline">{it.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Comfort picker — "what did you wear that felt comfortable?" ──
+function ComfortPicker({
+  verdict,
+  worn,
+  onToggle,
+  onSave,
+  onSkip,
+}: {
+  verdict: Verdict;
+  worn: string[];
+  onToggle: (id: string) => void;
+  onSave: () => void;
+  onSkip: () => void;
+}) {
+  const direction = verdict === 'too_cold' ? 'warmer' : 'cooler';
+  return (
+    <div className="mx-5 mb-4 rounded-2xl border border-outline-variant bg-surface-low p-4">
+      <p className="text-sm font-medium text-on-surface">
+        What did you wear that felt comfortable?
+      </p>
+      <p className="mt-0.5 text-xs text-on-surface-variant">
+        Optional — tells Coat Check what actually felt right ({direction} than suggested) next time
+        it&apos;s like this.
+      </p>
+      <div className="mt-3 flex flex-col gap-3">
+        {CATEGORIES.map((cat) => {
+          const catItems = DEFAULT_CATALOG.filter((i) => i.category === cat);
+          if (catItems.length === 0) return null;
+          return (
+            <div key={cat}>
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-primary">
+                {cat}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {catItems.map((item) => {
+                  const on = worn.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => onToggle(item.id)}
+                      aria-pressed={on}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                        on
+                          ? 'border-transparent bg-secondary-container text-on-secondary-container'
+                          : 'border-outline-variant text-on-surface-variant hover:bg-surface-high'
+                      }`}
+                    >
+                      <Icon name={getItemIcon(item)} size={15} strokeWidth={1.6} />
+                      {item.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex items-center justify-end gap-2">
         <button
-          key={it.id}
-          aria-label={it.label}
-          disabled={disabled}
-          onClick={() => onFeedback(it.id)}
-          className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-transparent text-sm font-medium transition-shadow ${tones[it.tone]} ${
-            disabled ? 'cursor-not-allowed opacity-40' : 'hover:shadow-[var(--md-elev-1)]'
-          }`}
+          onClick={onSkip}
+          className="rounded-full px-4 py-2 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-high"
         >
-          <Icon name={it.icon} size={20} strokeWidth={1.8} />
-          <span className="hidden sm:inline">{it.label}</span>
+          Skip
         </button>
-      ))}
+        <button
+          onClick={onSave}
+          disabled={worn.length === 0}
+          className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          Save
+        </button>
+      </div>
     </div>
   );
 }
