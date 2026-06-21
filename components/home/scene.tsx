@@ -632,14 +632,14 @@ function Figure({ t, walking }: { t: number; walking: boolean }) {
           }}
         >
           <svg width="150" height="220" viewBox="0 0 150 220" style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-            {/* Canopy — wide, centred on the pole at x=98, held high */}
-            <path d="M54 46 Q98 4 142 46 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.6" />
-            <path d="M54 46 Q76 38 98 46 Q120 38 142 46" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.4" />
-            <path d="M64 46 Q98 22 132 46" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
+            {/* Canopy — wide, centred on the pole at x=98, lifted clear above the head */}
+            <path d="M54 14 Q98 -26 142 14 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.6" />
+            <path d="M54 14 Q76 6 98 14 Q120 6 142 14" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.4" />
+            <path d="M64 14 Q98 -10 132 14" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
             {/* Finial */}
-            <line x1="98" y1="22" x2="98" y2="14" stroke="#6E2424" strokeWidth="1.6" strokeLinecap="round" />
+            <line x1="98" y1="-6" x2="98" y2="-14" stroke="#6E2424" strokeWidth="1.6" strokeLinecap="round" />
             {/* Straight vertical pole: middle of canopy → right-hand grip */}
-            <line x1="98" y1="46" x2="98" y2="128" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
+            <line x1="98" y1="14" x2="98" y2="128" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
           </svg>
         </div>
       </div>
