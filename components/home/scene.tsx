@@ -617,9 +617,10 @@ function Figure({ t, walking }: { t: number; walking: boolean }) {
             <circle cx="98" cy="128" r="5.5" fill={SKIN} />
           </g>
         </svg>
-        {/* Umbrella — held in the right hand: a straight pole from the hand grip up to a
-            wide canopy over the head. Drawn in the figure's own 130×220 coordinates so the
-            grip lands exactly on the right hand (98,128); wobble rotates about that grip. */}
+        {/* Umbrella — a straight, vertical pole held at the right hand (x=98), running up
+            the figure's side to a wide canopy centred over the head. Drawn in the figure's
+            own 130×220 coordinates so the pole bottom meets the right hand (98,128); wobble
+            rotates about that grip. */}
         <div
           style={{
             position: 'absolute',
@@ -631,16 +632,14 @@ function Figure({ t, walking }: { t: number; walking: boolean }) {
           }}
         >
           <svg width="130" height="220" viewBox="0 0 130 220" style={{ position: 'absolute', inset: 0 }}>
-            {/* Canopy — wide enough to shelter the figure */}
-            <path d="M18 54 Q68 6 118 54 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.6" />
-            <path d="M18 54 Q38 46 58 54 Q68 49 78 54 Q98 46 118 54" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.4" />
-            <path d="M36 54 Q68 30 100 54" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
+            {/* Canopy — wide, centred over the head */}
+            <path d="M22 52 Q68 6 114 52 Z" fill="#A33C3C" stroke="#6E2424" strokeWidth="1.6" />
+            <path d="M22 52 Q40 44 58 52 Q68 47 78 52 Q96 44 114 52" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.4" />
+            <path d="M38 52 Q68 28 98 52" fill="none" stroke="#6E2424" strokeWidth="0.8" opacity="0.5" />
             {/* Finial */}
-            <line x1="68" y1="30" x2="68" y2="22" stroke="#6E2424" strokeWidth="1.6" strokeLinecap="round" />
-            {/* Straight pole: canopy → right-hand grip */}
-            <line x1="68" y1="33" x2="98" y2="127" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
-            {/* J-hook grip at the hand */}
-            <path d="M98 127 q0 7 -6 7" fill="none" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
+            <line x1="68" y1="28" x2="68" y2="20" stroke="#6E2424" strokeWidth="1.6" strokeLinecap="round" />
+            {/* Straight vertical pole down the figure's side to the hand */}
+            <line x1="98" y1="50" x2="98" y2="128" stroke="#3D2A1F" strokeWidth="2.4" strokeLinecap="round" />
           </svg>
         </div>
       </div>
