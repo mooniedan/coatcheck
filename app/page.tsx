@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import SignInButton from '@/components/SignInButton';
 import AnimatedHome from '@/components/home/AnimatedHome';
+import { Icon } from '@/components/ui/Icon';
 import type { Category, Recommendation, ResolvedLocation, Verdict } from '@/lib/types';
 
 const CATEGORIES: Category[] = ['Tops', 'Bottoms', 'Outerwear', 'Accessories'];
@@ -110,6 +111,22 @@ export default function Home() {
       </header>
 
       <p className="text-on-surface-variant">What should you wear today? Tell me where you are.</p>
+
+      {!signedIn && (
+        <Link
+          href="/beta"
+          className="flex items-center gap-2 rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant transition-colors hover:bg-surface-high"
+        >
+          <Icon name="info" size={18} color="var(--md-primary)" strokeWidth={2} />
+          <span>
+            Coat Check is in <span className="font-medium text-on-surface">closed testing</span>.
+          </span>
+          <span className="ml-auto inline-flex items-center gap-1 font-medium text-primary">
+            Join the beta
+            <Icon name="chevronRight" size={16} strokeWidth={2} />
+          </span>
+        </Link>
+      )}
 
       <form onSubmit={searchCity} className="flex flex-col gap-2 sm:flex-row">
         <input
