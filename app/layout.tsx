@@ -24,7 +24,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={robotoFlex.variable}>
-      <body>{children}</body>
+      {/* suppressHydrationWarning: browser extensions (e.g. ColorZilla) inject attributes
+          onto <body> before React hydrates, which would otherwise log a mismatch. */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

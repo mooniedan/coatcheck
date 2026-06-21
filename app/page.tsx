@@ -3,13 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import SignInButton from '@/components/SignInButton';
-import type {
-  Category,
-  ClothingItem,
-  Recommendation,
-  ResolvedLocation,
-  Verdict,
-} from '@/lib/types';
+import AnimatedHome from '@/components/home/AnimatedHome';
+import type { Category, Recommendation, ResolvedLocation, Verdict } from '@/lib/types';
 
 const CATEGORIES: Category[] = ['Tops', 'Bottoms', 'Outerwear', 'Accessories'];
 
@@ -162,113 +157,14 @@ export default function Home() {
       )}
 
       {rec && location && !loading && (
-        <section className="flex flex-col gap-5">
-          <WeatherCard location={location} rec={rec} />
-
-          {CATEGORIES.map((category) => (
-            <CategoryRow key={category} category={category} items={rec.itemsByCategory[category]} />
-          ))}
-
-          <div className="mt-2 rounded-[28px] border border-outline-variant bg-surface-low p-5">
-            <p className="mb-3 text-sm font-medium text-on-surface-variant">How did this feel?</p>
-            <div className="flex flex-wrap gap-2.5">
-              <FeedbackChip
-                label="Too cold"
-                emoji="🥶"
-                tone="cool"
-                onClick={() => sendFeedback('too_cold')}
-              />
-              <FeedbackChip
-                label="Just right"
-                emoji="👍"
-                tone="just"
-                onClick={() => sendFeedback('just_right')}
-              />
-              <FeedbackChip
-                label="Too hot"
-                emoji="🥵"
-                tone="warm"
-                onClick={() => sendFeedback('too_hot')}
-              />
-            </div>
-            {feedbackMsg && <p className="mt-3 text-sm text-on-surface-variant">{feedbackMsg}</p>}
-          </div>
-        </section>
+        <AnimatedHome
+          location={location}
+          rec={rec}
+          onFeedback={sendFeedback}
+          feedbackMsg={feedbackMsg}
+        />
       )}
     </main>
   );
 }
 
-function WeatherCard({ location, rec }: { location: ResolvedLocation; rec: Recommendation }) {
-  const w = rec.weather;
-  return (
-    <div className="rounded-[28px] bg-gradient-to-br from-primary to-secondary p-6 text-on-primary shadow-[var(--md-elev-2)]">
-      <p className="text-sm font-medium opacity-90">
-        {location.name}
-        {location.admin1 ? `, ${location.admin1}` : ''}
-      </p>
-      <div className="mt-1 flex items-end gap-3">
-        <span className="text-5xl font-semibold leading-none">{Math.round(w.tempC)}°</span>
-        <span className="pb-1 opacity-90">feels like {Math.round(w.feelsLikeC)}°</span>
-      </div>
-      <p className="mt-2 text-sm opacity-90">
-        {w.description} · 💨 {Math.round(w.windKph)} km/h · 💧 {w.precipitationProbability}%
-      </p>
-    </div>
-  );
-}
-
-function CategoryRow({ category, items }: { category: Category; items: ClothingItem[] }) {
-  if (items.length === 0) return null;
-  return (
-    <div>
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary">
-        {category}
-      </h2>
-      <div className="flex flex-wrap gap-2.5">
-        {items.map((item) => (
-          <span
-            key={item.id}
-            className="flex items-center gap-2 rounded-2xl border border-outline-variant bg-surface-lowest px-3 py-2 text-sm font-medium text-on-surface shadow-[var(--md-elev-1)]"
-          >
-            <span
-              aria-hidden
-              className="flex h-7 w-7 items-center justify-center rounded-[10px] bg-primary-container text-base"
-            >
-              {item.icon}
-            </span>
-            {item.name}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-const FEEDBACK_TONES = {
-  cool: 'bg-cool-container text-cool',
-  warm: 'bg-warm-container text-warm',
-  just: 'bg-just-container text-just',
-} as const;
-
-function FeedbackChip({
-  label,
-  emoji,
-  tone,
-  onClick,
-}: {
-  label: string;
-  emoji: string;
-  tone: keyof typeof FEEDBACK_TONES;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-2xl border-2 border-transparent px-4 py-2.5 text-sm font-medium transition-shadow hover:shadow-[var(--md-elev-1)] ${FEEDBACK_TONES[tone]}`}
-    >
-      <span aria-hidden>{emoji}</span>
-      {label}
-    </button>
-  );
-}

@@ -67,6 +67,14 @@
 
   /* Warm page background used app-wide */
   --cc-page-bg: radial-gradient(1200px 600px at 50% -10%, #f2e5da 0%, #e5dad2 60%, #dac8bc 100%);
+
+  /* Radii */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
 }
 
 html,
@@ -84,4 +92,63 @@ body {
   color: var(--md-on-surface);
   background: var(--cc-page-bg);
   background-attachment: fixed;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Animated-home scene keyframes — ported from 01c (walking figure,
+   parallax world, weather particles). Consumed by components/home/scene.
+   ───────────────────────────────────────────────────────────── */
+@keyframes ahsBob {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-3px); }
+  50% { transform: translateY(-1px); }
+  75% { transform: translateY(-3px); }
+}
+@keyframes ahsBobAmbient {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+@keyframes ahsLegL { 0%, 100% { transform: rotate(14deg); } 50% { transform: rotate(-14deg); } }
+@keyframes ahsLegR { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } }
+@keyframes ahsArmL { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(10deg); } }
+@keyframes ahsArmR { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(-10deg); } }
+@keyframes ahsUmbrella {
+  0%, 100% { transform: translateX(-50%) rotate(-1.5deg); }
+  50% { transform: translateX(-50%) rotate(1.5deg); }
+}
+@keyframes ahsRain {
+  0% { transform: translateY(-30px); opacity: 0; }
+  30% { opacity: 0.9; }
+  100% { transform: translateY(140px); opacity: 0; }
+}
+@keyframes ahsCloudDrift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes ahsParallaxSlow { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes ahsParallaxMed { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes ahsParallaxFast { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes ahsRing {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { opacity: 0.6; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* UI animation keyframes — ported from the design kit (coatcheck.jsx). */
+@keyframes ccFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ccToastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ccScreenIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Reduced motion — freeze the scene; the engine also gates JS-driven walking. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
