@@ -1,19 +1,11 @@
 import type { Config } from 'tailwindcss';
 
-// Coat Check palette — cool sky tones for weather, warm accents for clothing.
+// Coat Check — Material 3 "warm clay" tokens (defined as CSS vars in globals.css).
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Legacy cool-sky palette (still used by /family until migrated).
-        ink: { DEFAULT: '#11202b', 2: '#1d3340', 3: '#2c4654' },
-        paper: { DEFAULT: '#f5f8fb', 2: '#e6eef5', 3: '#d2e0eb' },
-        sky: { DEFAULT: '#3aa0e8', deep: '#1f6fb0' },
-        dusk: { DEFAULT: '#5b6ea8', deep: '#3c4a78' },
-        warmth: { DEFAULT: '#f5a623', deep: '#d2860a' },
-        chill: { DEFAULT: '#7ec8e3', deep: '#4f9fc0' },
-
         // Material 3 warm-clay design tokens (see globals.css :root).
         primary: 'var(--md-primary)',
         'on-primary': 'var(--md-on-primary)',
