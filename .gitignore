@@ -19,3 +19,7 @@ coverage/
 npm-debug.log*
 .DS_Store
 .playwright-mcp/
+/test-results/
+/playwright-report/
+/blob-report/
+/.last-run.json
