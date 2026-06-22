@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
+import type { ApiError } from '@/lib/types';
 
 type Status = 'idle' | 'saving' | 'done' | 'error';
 
@@ -21,7 +22,7 @@ export default function BetaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as ApiError;
       if (!res.ok) {
         setStatus('error');
         setMessage(data.error ?? 'Something went wrong.');

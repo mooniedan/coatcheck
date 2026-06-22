@@ -1,15 +1,8 @@
-import type {
-  Category,
-  ClothingItem,
-  ComfortModel,
-  Recommendation,
-  WeatherSnapshot,
-} from './types';
+import { CATEGORIES } from './types';
+import type { Category, ClothingItem, ComfortModel, Recommendation, WeatherSnapshot } from './types';
 
 // Pure recommendation engine. No framework/DB imports — unit-tested in recommend.test.ts
 // and identical whether invoked from the web Route Handlers or a future mobile API.
-
-const CATEGORIES: Category[] = ['Tops', 'Bottoms', 'Outerwear', 'Accessories'];
 
 /** Wind (kph) at/above which windproofing and a real "feels colder" penalty kick in. */
 export const WINDY_KPH = 20;

@@ -5,15 +5,16 @@
 // that day — the home scene then rests on that day's recommendation (see AnimatedHome).
 
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { weatherGlyph, type GlyphCategory } from '@/lib/wmo';
 import type { DayRecommendation } from '@/lib/types';
 
-// Map a WMO weather code to one of the four available weather glyphs.
-function glyphFor(code: number): IconName {
-  if (code >= 71 && code <= 77) return 'snowflake';
-  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 99)) return 'cloudRain';
-  if (code === 0 || code === 1) return 'sun';
-  return 'cloud';
-}
+// Map the shared glyph category to this strip's icon set.
+const GLYPH_ICON: Record<GlyphCategory, IconName> = {
+  clear: 'sun',
+  cloud: 'cloud',
+  rain: 'cloudRain',
+  snow: 'snowflake',
+};
 
 // Short weekday label from an ISO date; index 0 is always "Today".
 function labelFor(date: string, index: number): string {
@@ -50,7 +51,7 @@ export default function WeekStrip({
           >
             <span className="text-[11px] font-medium leading-none">{labelFor(d.day.date, i)}</span>
             <Icon
-              name={glyphFor(d.day.weatherCode)}
+              name={GLYPH_ICON[weatherGlyph(d.day.weatherCode)]}
               size={20}
               strokeWidth={1.7}
               color={selected ? 'currentColor' : 'var(--md-primary)'}

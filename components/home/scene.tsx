@@ -7,6 +7,7 @@
 // live in globals.css (ahs*). Kept close to the original so it can be re-synced.
 
 import { useRef, type ReactNode } from 'react';
+import { isSnowCode, rainIntensity, type RainIntensity } from '@/lib/wmo';
 import type { Recommendation, WeatherSnapshot } from '@/lib/types';
 
 // ── Interpolation helpers ──────────────────────────────────────
@@ -163,12 +164,17 @@ export interface SceneWeather {
   clearFactor: number;
 }
 
-const DRIZZLE = new Set([51, 53, 55]);
-const RAIN_LIGHT = new Set([61, 80, 81]);
-const RAIN_HEAVY = new Set([65, 82, 95, 96, 99]);
-const SNOW = new Set([71, 73, 75]);
+// Base rain-overlay strength per intensity bucket (before the probability nudge).
+const RAIN_BASE: Record<RainIntensity, number> = {
+  none: 0,
+  drizzle: 0.35,
+  light: 0.6,
+  moderate: 0.72,
+  heavy: 0.92,
+};
 
-// Map a live weather snapshot → scene overlay levels (WMO weather_code driven).
+// Map a live weather snapshot → scene overlay levels. Rain/snow classification comes from
+// lib/wmo (shared); the cloud/clear-sky levels are scene-specific visual tuning.
 export function sceneWeatherFromSnapshot(w: WeatherSnapshot): SceneWeather {
   const code = w.weatherCode;
 
@@ -190,15 +196,11 @@ export function sceneWeatherFromSnapshot(w: WeatherSnapshot): SceneWeather {
   }
 
   let rain = 0;
-  if (w.isRaining && !SNOW.has(code)) {
-    if (DRIZZLE.has(code)) rain = 0.35;
-    else if (RAIN_LIGHT.has(code)) rain = 0.6;
-    else if (code === 63) rain = 0.72;
-    else if (RAIN_HEAVY.has(code)) rain = 0.92;
-    else rain = 0.5;
+  if (w.isRaining && !isSnowCode(code)) {
+    rain = RAIN_BASE[rainIntensity(code)] || 0.5;
     // nudge by probability around a 60% pivot
     rain = clamp(rain + (w.precipitationProbability - 60) / 400, 0.25, 0.95);
-  } else if (!SNOW.has(code) && w.precipitationProbability >= 60) {
+  } else if (!isSnowCode(code) && w.precipitationProbability >= 60) {
     rain = 0.2; // likely soon, hint at it
   }
 

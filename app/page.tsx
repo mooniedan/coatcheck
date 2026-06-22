@@ -6,21 +6,17 @@ import SignInButton from '@/components/SignInButton';
 import AnimatedHome from '@/components/home/AnimatedHome';
 import WeekStrip from '@/components/home/WeekStrip';
 import { Icon } from '@/components/ui/Icon';
+import { CATEGORIES } from '@/lib/types';
 import type {
-  Category,
+  ApiError,
   DayRecommendation,
+  MeResponse,
+  Profile,
   Recommendation,
+  RecommendationsResponse,
   ResolvedLocation,
   Verdict,
 } from '@/lib/types';
-
-const CATEGORIES: Category[] = ['Tops', 'Bottoms', 'Outerwear', 'Accessories'];
-
-interface Profile {
-  id: string;
-  display_name: string;
-  relationship: string;
-}
 
 export default function Home() {
   const [query, setQuery] = useState('');
@@ -38,7 +34,7 @@ export default function Home() {
 
   useEffect(() => {
     fetch('/api/me')
-      .then((r) => r.json())
+      .then((r) => r.json() as Promise<MeResponse>)
       .then((data) => {
         setSignedIn(Boolean(data.user));
         setProfiles(data.profiles ?? []);
@@ -55,8 +51,10 @@ export default function Home() {
       try {
         const profileParam = activeProfile ? `&profileId=${activeProfile}` : '';
         const res = await fetch(`/api/recommendations?${params}${profileParam}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? 'Something went wrong');
+        const data = (await res.json()) as RecommendationsResponse | ApiError;
+        if (!res.ok || 'error' in data) {
+          throw new Error(('error' in data && data.error) || 'Something went wrong');
+        }
         setLocation(data.location);
         setRec(data.recommendation);
         setWeek(data.week ?? []);

@@ -1,49 +1,15 @@
 import 'server-only';
+import { describeWeatherCode, isRainyCode } from './wmo';
 import type { DailyForecast, ResolvedLocation, WeatherSnapshot } from './types';
 
 // Server-side Open-Meteo adapter. Free, no API key for non-commercial/dev use. Kept behind
 // this stable interface so the provider can be swapped without touching routes or clients.
+// WMO weather-code interpretation lives in lib/wmo.ts (shared with the client).
 
 const FORECAST_URL =
   process.env.OPEN_METEO_FORECAST_URL ?? 'https://api.open-meteo.com/v1/forecast';
 const GEOCODING_URL =
   process.env.OPEN_METEO_GEOCODING_URL ?? 'https://geocoding-api.open-meteo.com/v1/search';
-
-// Minimal WMO weather-code → label map (https://open-meteo.com/en/docs).
-const WMO: Record<number, string> = {
-  0: 'Clear sky',
-  1: 'Mainly clear',
-  2: 'Partly cloudy',
-  3: 'Overcast',
-  45: 'Fog',
-  48: 'Rime fog',
-  51: 'Light drizzle',
-  53: 'Drizzle',
-  55: 'Heavy drizzle',
-  61: 'Light rain',
-  63: 'Rain',
-  65: 'Heavy rain',
-  71: 'Light snow',
-  73: 'Snow',
-  75: 'Heavy snow',
-  80: 'Rain showers',
-  81: 'Rain showers',
-  82: 'Violent rain showers',
-  95: 'Thunderstorm',
-  96: 'Thunderstorm with hail',
-  99: 'Thunderstorm with hail',
-};
-
-const RAIN_CODES = new Set([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99]);
-
-export function describeWeatherCode(code: number): string {
-  return WMO[code] ?? 'Unknown';
-}
-
-/** Whether a WMO weather code denotes drizzle/rain/showers/thunderstorm. */
-export function isRainyCode(code: number): boolean {
-  return RAIN_CODES.has(code);
-}
 
 /** Resolve a free-text place query to coordinates (first match). */
 export async function geocode(query: string): Promise<ResolvedLocation | null> {
@@ -104,7 +70,7 @@ function currentToSnapshot(c: CurrentBlock): WeatherSnapshot {
     humidity: c.relative_humidity_2m,
     windKph: c.wind_speed_10m,
     precipitationProbability: c.precipitation_probability ?? 0,
-    isRaining: c.precipitation > 0 || RAIN_CODES.has(c.weather_code),
+    isRaining: c.precipitation > 0 || isRainyCode(c.weather_code),
     weatherCode: c.weather_code,
     description: describeWeatherCode(c.weather_code),
     observedAt: c.time,
@@ -148,7 +114,7 @@ function dailyToForecast(d: DailyBlock): DailyForecast[] {
         // A representative daily code can read "Overcast" on a day with high shower probability,
         // so fall back to the precip probability — otherwise the figure carries no umbrella on a
         // day whose own strip cell shows e.g. 80%.
-        isRaining: RAIN_CODES.has(code) || precipProb >= DAILY_RAIN_PROB,
+        isRaining: isRainyCode(code) || precipProb >= DAILY_RAIN_PROB,
         // Daytime high is the "what to wear" signal for a whole-day glance.
         feelsLikeC: feelsLikeMaxC,
       };

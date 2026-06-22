@@ -5,6 +5,9 @@ export type Cohort = 'alpha' | 'beta' | 'ga';
 
 export type Category = 'Tops' | 'Bottoms' | 'Outerwear' | 'Accessories';
 
+/** Canonical category order — single source of truth for iteration and display. */
+export const CATEGORIES: Category[] = ['Tops', 'Bottoms', 'Outerwear', 'Accessories'];
+
 export type Verdict = 'too_cold' | 'too_hot' | 'just_right';
 
 export interface ClothingItem {
@@ -85,4 +88,46 @@ export interface DailyForecast {
 export interface DayRecommendation {
   day: DailyForecast;
   recommendation: Recommendation;
+}
+
+// ── API response contracts (shared client ↔ route handlers) ────────────────
+// Define the wire shapes once so the client doesn't read fields off `any`. Profile/account
+// use the snake_case DB column names as actually returned by the handlers.
+
+export interface Profile {
+  id: string;
+  display_name: string;
+  relationship: string;
+  comfort_model?: ComfortModel;
+}
+
+export interface Account {
+  id: string;
+  email: string | null;
+  cohort: Cohort;
+}
+
+export interface ApiError {
+  error: string;
+}
+
+export interface MeResponse {
+  user: { id: string; email: string | null; role?: string } | null;
+  account: Account | null;
+  profiles: Profile[];
+  warning?: string;
+}
+
+export interface RecommendationsResponse {
+  location: ResolvedLocation;
+  recommendation: Recommendation;
+  week: DayRecommendation[];
+}
+
+export interface ProfilesResponse {
+  profiles: Profile[];
+}
+
+export interface ProfileResponse {
+  profile: Profile;
 }

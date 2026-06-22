@@ -20,9 +20,8 @@ import {
 import { Icon } from '@/components/ui/Icon';
 import { getItemIcon } from '@/lib/itemIcons';
 import { DEFAULT_CATALOG } from '@/lib/catalog';
-import type { Category, ClothingItem, Recommendation, ResolvedLocation, Verdict } from '@/lib/types';
-
-const CATEGORIES: Category[] = ['Tops', 'Bottoms', 'Outerwear', 'Accessories'];
+import { CATEGORIES } from '@/lib/types';
+import type { ClothingItem, Recommendation, ResolvedLocation, Verdict } from '@/lib/types';
 
 // Browser local time → t (06:00→21:00 maps onto 0..1), clamped.
 function nowToT() {

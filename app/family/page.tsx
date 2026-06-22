@@ -3,12 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
-
-interface Profile {
-  id: string;
-  display_name: string;
-  relationship: string;
-}
+import type { ApiError, Profile, ProfileResponse, ProfilesResponse } from '@/lib/types';
 
 const RELATIONSHIPS = ['self', 'partner', 'child', 'other'];
 
@@ -30,7 +25,7 @@ export default function FamilyPage() {
       setLoaded(true);
       return;
     }
-    const data = await res.json();
+    const data = (await res.json()) as ProfilesResponse;
     setProfiles(data.profiles ?? []);
     setLoaded(true);
   }
@@ -47,9 +42,9 @@ export default function FamilyPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ displayName: name, relationship }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? 'Could not add');
+    const data = (await res.json()) as ProfileResponse | ApiError;
+    if (!res.ok || 'error' in data) {
+      setError(('error' in data && data.error) || 'Could not add');
       return;
     }
     setName('');
@@ -59,7 +54,7 @@ export default function FamilyPage() {
   async function removeProfile(id: string) {
     const res = await fetch(`/api/profiles?id=${id}`, { method: 'DELETE' });
     if (!res.ok) {
-      const data = await res.json();
+      const data = (await res.json()) as ApiError;
       setError(data.error ?? 'Could not remove');
       return;
     }
