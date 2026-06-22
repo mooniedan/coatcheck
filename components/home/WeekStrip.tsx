@@ -33,17 +33,22 @@ export default function WeekStrip({
   onSelect: (index: number) => void;
 }) {
   return (
-    <div className="grid grid-cols-7 gap-1.5" role="tablist" aria-label="7-day forecast">
+    <div className="grid grid-cols-7 gap-1.5" role="group" aria-label="7-day forecast">
       {week.map((d, i) => {
         const selected = i === selectedIndex;
         const showPrecip = d.day.precipProb > 20;
         return (
           <button
             key={d.day.date}
-            role="tab"
-            aria-selected={selected}
+            type="button"
+            aria-pressed={selected}
+            aria-label={`${labelFor(d.day.date, i)}: ${d.day.description}, high ${Math.round(
+              d.day.tempMaxC
+            )}°, low ${Math.round(d.day.tempMinC)}°${
+              showPrecip ? `, ${d.day.precipProb}% precipitation` : ''
+            }`}
             onClick={() => onSelect(i)}
-            className={`flex flex-col items-center gap-1 rounded-2xl border px-1 py-2 transition-colors ${
+            className={`flex flex-col items-center gap-1 rounded-2xl border px-1 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               selected
                 ? 'border-transparent bg-secondary-container text-on-secondary-container'
                 : 'border-outline-variant bg-surface-low text-on-surface-variant hover:bg-surface-high'

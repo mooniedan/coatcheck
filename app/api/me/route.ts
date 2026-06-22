@@ -25,11 +25,12 @@ export async function GET() {
   try {
     const admin = createAdminClient();
 
-    // Resolve any elevated role granted to this email (admin / superadmin).
+    // Resolve any elevated role granted to this email (admin / superadmin). Normalize case:
+    // Google emails can arrive mixed-case, but the grant list is stored lowercase.
     const { data: grant } = await admin
       .from('admin_emails')
       .select('role')
-      .eq('email', user.email ?? '')
+      .eq('email', (user.email ?? '').toLowerCase())
       .maybeSingle();
     const role: string = grant?.role ?? 'user';
 

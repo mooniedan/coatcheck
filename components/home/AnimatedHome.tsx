@@ -11,7 +11,6 @@ import {
   FeelsBadge,
   Timeline,
   clamp,
-  formatClock,
   HOUR_START,
   HOUR_END,
   sceneWeatherFromSnapshot,
@@ -55,8 +54,8 @@ export default function AnimatedHome({
   const [phase, setPhase] = useState<Phase>('tour');
   const [t, setT] = useState(0);
   const [controls, setControls] = useState(false);
-  const [paused, setPaused] = useState(false);
   const [exploded, setExploded] = useState(false);
+  const [, setClockTick] = useState(0);
   const [reduced, setReduced] = useState(false);
   const [lastInteract, setLastInteract] = useState(0);
 
@@ -111,12 +110,20 @@ export default function AnimatedHome({
     return () => cancelAnimationFrame(rafRef.current);
   }, [phase, reduced]);
 
-  // Auto-fade controls 3s after the last interaction.
+  // Auto-fade controls 3s after the last interaction. `lastInteract` re-arms the timer; `t`
+  // must NOT be a dep or it re-arms every animation frame while scrubbing.
   useEffect(() => {
     if (!controls) return;
     const id = setTimeout(() => setControls(false), 3000);
     return () => clearTimeout(id);
-  }, [controls, lastInteract, t]);
+  }, [controls, lastInteract]);
+
+  // Keep the resting clock live (it's derived from wall-clock time, which doesn't re-render).
+  useEffect(() => {
+    if (phase !== 'rest') return;
+    const id = setInterval(() => setClockTick((c) => c + 1), 30_000);
+    return () => clearInterval(id);
+  }, [phase]);
 
   const onSceneTap = () => {
     if (phase === 'tour') return;
@@ -188,48 +195,6 @@ export default function AnimatedHome({
         )}
 
         {exploded && <ExplodedOutfit items={items} onClose={() => setExploded(false)} />}
-
-        {/* Play/pause when controls are prominent */}
-        {controls && !exploded && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setPaused(!paused);
-              setLastInteract(Date.now());
-            }}
-            aria-label={paused ? 'Play' : 'Pause'}
-            style={{
-              position: 'absolute',
-              left: '50%',
-              bottom: 16,
-              transform: 'translateX(-50%)',
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              border: 'none',
-              background: 'rgba(255,255,255,0.92)',
-              color: 'var(--md-on-surface)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: 'var(--md-elev-2)',
-              animation: 'ccFadeIn 0.25s ease',
-              zIndex: 5,
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              {paused ? (
-                <path d="M8 5v14l11-7z" />
-              ) : (
-                <g>
-                  <rect x="6" y="5" width="4" height="14" />
-                  <rect x="14" y="5" width="4" height="14" />
-                </g>
-              )}
-            </svg>
-          </button>
-        )}
       </div>
 
       {/* Timeline + feedback */}

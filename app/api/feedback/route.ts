@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireUser } from '@/lib/supabase/auth';
 import { applyFeedback } from '@/lib/thresholds';
-import { isSupabaseConfigured } from '@/lib/supabase/env';
 import type { ComfortModel, Verdict, WeatherSnapshot } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -22,14 +21,9 @@ interface FeedbackBody {
 // POST /api/feedback → record a verdict and nudge the profile's comfort model.
 // Requires a signed-in user who owns the profile. All writes use the service_role client.
 export async function POST(request: NextRequest) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
-  }
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+  const { user } = auth;
 
   const body = (await request.json()) as Partial<FeedbackBody>;
   if (!body.profileId || !body.verdict || !VERDICTS.includes(body.verdict) || !body.weather) {
@@ -52,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Persist the feedback row (cohort denormalized for the Phase 3 aggregation job).
-    await admin.from('feedback').insert({
+    const { error: insertError } = await admin.from('feedback').insert({
       profile_id: body.profileId,
       cohort: account.cohort,
       feels_like_c: body.weather.feelsLikeC,
@@ -61,11 +55,17 @@ export async function POST(request: NextRequest) {
       worn_item_ids: body.wornItemIds ?? [],
       verdict: body.verdict,
     });
+    if (insertError) throw insertError;
 
-    // Nudge the profile's comfort model.
+    // Nudge the profile's comfort model. Surface a failure here too — otherwise the learned
+    // offset silently never changes while the client is told the feedback was saved.
     const current = (profile.comfort_model as ComfortModel | null) ?? { offsetC: 0 };
     const updated = applyFeedback(current, body.verdict);
-    await admin.from('profiles').update({ comfort_model: updated }).eq('id', body.profileId);
+    const { error: updateError } = await admin
+      .from('profiles')
+      .update({ comfort_model: updated })
+      .eq('id', body.profileId);
+    if (updateError) throw updateError;
 
     return NextResponse.json({ ok: true, comfort: updated });
   } catch (err) {

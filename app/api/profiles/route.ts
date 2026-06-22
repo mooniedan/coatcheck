@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSupabaseConfigured } from '@/lib/supabase/env';
+import { requireUser } from '@/lib/supabase/auth';
 
 export const runtime = 'nodejs';
-
-// When Supabase isn't configured there's no auth — behave as "not signed in".
-const signInRequired = () => NextResponse.json({ error: 'Sign in required' }, { status: 401 });
 
 // Family profiles for the signed-in account. All mutations use the service_role client
 // after verifying ownership.
@@ -21,14 +17,10 @@ async function ownerAccountId(userId: string) {
 }
 
 export async function GET() {
-  if (!isSupabaseConfigured()) return signInRequired();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
 
-  const accountId = await ownerAccountId(user.id);
+  const accountId = await ownerAccountId(auth.user.id);
   if (!accountId) return NextResponse.json({ profiles: [] });
 
   const admin = createAdminClient();
@@ -42,18 +34,14 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isSupabaseConfigured()) return signInRequired();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
 
   const body = (await request.json()) as { displayName?: string; relationship?: string };
   const displayName = body.displayName?.trim();
   if (!displayName) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 
-  const accountId = await ownerAccountId(user.id);
+  const accountId = await ownerAccountId(auth.user.id);
   if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -75,17 +63,13 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  if (!isSupabaseConfigured()) return signInRequired();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
 
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  const accountId = await ownerAccountId(user.id);
+  const accountId = await ownerAccountId(auth.user.id);
   if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 400 });
 
   const admin = createAdminClient();
