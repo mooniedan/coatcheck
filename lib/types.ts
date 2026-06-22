@@ -138,6 +138,8 @@ export interface MeResponse {
   user: { id: string; email: string | null; role?: string } | null;
   account: Account | null;
   profiles: Profile[];
+  /** 'active' = an invited tester; 'waitlisted' = signed in but not yet allow-listed. */
+  status?: 'active' | 'waitlisted';
   warning?: string;
 }
 
@@ -162,4 +164,33 @@ export interface ProfileResponse {
 
 export interface GeocodeResponse {
   results: ResolvedLocation[];
+}
+
+// ── Admin ──────────────────────────────────────────────────────
+export interface BetaSignup {
+  email: string;
+  source: string | null;
+  created_at: string;
+  /** true = invited tester; false = on the waitlist. */
+  allowed: boolean;
+  approved_at: string | null;
+}
+
+export interface AdminAccount {
+  id: string;
+  email: string | null;
+  cohort: Cohort;
+  created_at: string;
+}
+
+export interface AdminGrant {
+  email: string;
+  role: string;
+}
+
+export interface AdminOverviewResponse {
+  admins: AdminGrant[];
+  accounts: AdminAccount[];
+  /** Every beta_signups row; split client-side by `allowed` into invited vs waitlist. */
+  signups: BetaSignup[];
 }

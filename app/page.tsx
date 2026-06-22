@@ -32,6 +32,9 @@ export default function Home() {
   const [activeProfile, setActiveProfile] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState(false);
+  const [isTester, setIsTester] = useState(false); // signed in AND invited (allow-listed)
+  const [waitlisted, setWaitlisted] = useState(false); // signed in but not yet invited
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // When a new location's results load, scroll the forecast strip to the top of the viewport
   // so the 7-day strip + animated card are immediately in view (esp. on mobile).
@@ -47,6 +50,9 @@ export default function Home() {
       .then((r) => r.json() as Promise<MeResponse>)
       .then((data) => {
         setSignedIn(Boolean(data.user));
+        setIsTester(data.status === 'active');
+        setWaitlisted(Boolean(data.user) && data.status === 'waitlisted');
+        setIsAdmin(data.user?.role === 'admin' || data.user?.role === 'superadmin');
         setProfiles(data.profiles ?? []);
         if (data.profiles?.length) setActiveProfile(data.profiles[0].id);
       })
@@ -130,6 +136,11 @@ export default function Home() {
           Coat Check
         </h1>
         <div className="flex items-center gap-3">
+          {isAdmin && (
+            <Link href="/admin" className="text-sm font-medium text-primary hover:underline">
+              Admin
+            </Link>
+          )}
           {profiles.length > 0 && (
             <Link href="/family" className="text-sm font-medium text-primary hover:underline">
               Family
@@ -155,6 +166,16 @@ export default function Home() {
             <Icon name="chevronRight" size={16} strokeWidth={2} />
           </span>
         </Link>
+      )}
+
+      {waitlisted && (
+        <div className="flex items-start gap-2 rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant">
+          <Icon name="info" size={18} color="var(--md-primary)" strokeWidth={2} />
+          <span>
+            You’re signed in and on the <span className="font-medium text-on-surface">closed-testing</span>{' '}
+            waitlist — we’ll let you in as spots open up. Weather still works in the meantime.
+          </span>
+        </div>
       )}
 
       <CitySearch onPick={pickLocation} onSubmitText={searchText} onUseMyLocation={useMyLocation} />
@@ -194,7 +215,7 @@ export default function Home() {
             day={week[selectedDay]?.day ?? null}
             comfortOffsetC={comfortOffsetC}
             isToday={selectedDay === 0}
-            signedIn={signedIn}
+            signedIn={isTester}
             onFeedback={sendFeedback}
             feedbackMsg={feedbackMsg}
           />

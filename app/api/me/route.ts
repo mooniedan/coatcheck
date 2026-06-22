@@ -27,12 +27,40 @@ export async function GET() {
 
     // Resolve any elevated role granted to this email (admin / superadmin). Normalize case:
     // Google emails can arrive mixed-case, but the grant list is stored lowercase.
+    const emailLc = (user.email ?? '').toLowerCase();
     const { data: grant } = await admin
       .from('admin_emails')
       .select('role')
-      .eq('email', (user.email ?? '').toLowerCase())
+      .eq('email', emailLc)
       .maybeSingle();
     const role: string = grant?.role ?? 'user';
+    const isStaff = role === 'admin' || role === 'superadmin';
+
+    // Invite-only gate: only staff or allow-listed emails become testers. Everyone else is
+    // captured on the waitlist and shown the closed-testing message (no account provisioned).
+    let allowed = isStaff;
+    if (!allowed) {
+      const { data: signup, error } = await admin
+        .from('beta_signups')
+        .select('allowed')
+        .eq('email', emailLc)
+        .maybeSingle();
+      // If the `allowed` column doesn't exist yet (pre-0006), fail open so nobody is locked out.
+      allowed = error ? true : Boolean(signup?.allowed);
+    }
+
+    if (!allowed) {
+      // Capture them on the waitlist (don't overwrite an existing row's allowed/source).
+      await admin
+        .from('beta_signups')
+        .upsert({ email: emailLc, source: 'oauth' }, { onConflict: 'email', ignoreDuplicates: true });
+      return NextResponse.json({
+        user: { id: user.id, email: user.email, role },
+        account: null,
+        profiles: [],
+        status: 'waitlisted',
+      });
+    }
 
     // Ensure an account exists for this Google identity.
     let { data: account } = await admin
@@ -71,6 +99,7 @@ export async function GET() {
         user: { id: user.id, email: user.email, role },
         account,
         profiles: created.data ? [created.data] : [],
+        status: 'active',
       });
     }
 
@@ -78,6 +107,7 @@ export async function GET() {
       user: { id: user.id, email: user.email, role },
       account,
       profiles: profiles ?? [],
+      status: 'active',
     });
   } catch (err) {
     // Database not migrated yet — return the user so the UI still renders. Log detail
