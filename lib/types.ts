@@ -96,9 +96,11 @@ export interface DailyForecast {
    * (apparent_temperature_max). Used to run the recommendation engine per day.
    */
   feelsLikeC: number;
-  /** Local sunrise/sunset ISO timestamps for this day (anchors the hour slider). */
+  /** Local sunrise/sunset ISO timestamps for this day (anchors the hour slider + sky). */
   sunrise: string;
   sunset: string;
+  /** Seconds of daylight; NaN when unknown. ~86400 ⇒ polar day, ~0 ⇒ polar night. */
+  daylightSeconds: number;
   /** Hour-by-hour forecast for this day (used to scrub the scene across the day). */
   hours: HourForecast[];
 }

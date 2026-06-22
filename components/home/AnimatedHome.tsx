@@ -14,7 +14,9 @@ import {
   sceneWeatherFromSnapshot,
   outfitFromRecommendation,
   hourToSkyT,
+  skyTAt,
   dayWindow,
+  parseLocalHour,
 } from '@/lib/scene-model';
 import { recommend } from '@/lib/recommend';
 import { describeWeatherCode } from '@/lib/wmo';
@@ -39,9 +41,11 @@ function nowClock() {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// The slider's hour window for a day, anchored to real sunrise/sunset.
+// The slider's hour window for a day, anchored to real sunrise/sunset (polar-day/night aware).
 function windowFor(day: DailyForecast | null) {
-  const win = day ? dayWindow(day.sunrise, day.sunset) : { start: HOUR_START, end: HOUR_END };
+  const win = day
+    ? dayWindow(day.sunrise, day.sunset, day.daylightSeconds)
+    : { start: HOUR_START, end: HOUR_END };
   return { ...win, span: Math.max(1, win.end - win.start) };
 }
 
@@ -229,9 +233,14 @@ export default function AnimatedHome({
 
   const useHour = hourView !== null;
   const walking = !reduced && phase === 'tour';
-  // The figure/sky read the real selected hour when we have it; the slider position (t) stays
-  // in window space, so the sky is driven by hour-of-day, not the raw slider value.
-  const skyT = useHour ? hourToSkyT(selectedHour) : t;
+  // The sky's light/dark is driven by the day's REAL sunrise/sunset (polar day/night included),
+  // so it's only dark when the sun is actually down — not on a canned 06:00–21:00 clock.
+  const skyT =
+    useHour && day
+      ? skyTAt(selectedHour, parseLocalHour(day.sunrise), parseLocalHour(day.sunset), day.daylightSeconds)
+      : useHour
+        ? hourToSkyT(selectedHour)
+        : t;
   const badgeTemp = useHour
     ? hourView.feels
     : phase === 'rest'

@@ -12,6 +12,9 @@ import {
   parseLocalHour,
   hourToSkyT,
   dayWindow,
+  skyTAt,
+  isPolarDay,
+  isPolarNight,
 } from './scene-model';
 import type { Category, ClothingItem, Recommendation, WeatherSnapshot } from './types';
 
@@ -106,6 +109,46 @@ describe('hour ↔ slider mapping', () => {
   });
   it('dayWindow falls back to 06–21 when sun times are missing', () => {
     expect(dayWindow('', '')).toEqual({ start: 6, end: 21 });
+  });
+  it('dayWindow scrubs the full day under polar day/night', () => {
+    // Midnight sun: Open-Meteo rolls sunset to the next day; daylight = 24h.
+    expect(dayWindow('2026-06-22T00:00', '2026-06-23T00:00', 86400)).toEqual({ start: 0, end: 23 });
+    // Polar night: ~0 daylight.
+    expect(dayWindow('2026-12-22T11:00', '2026-12-22T11:00', 0)).toEqual({ start: 0, end: 23 });
+  });
+});
+
+describe('polar detection', () => {
+  it('classifies polar day/night by daylight seconds', () => {
+    expect(isPolarDay(86400)).toBe(true);
+    expect(isPolarDay(50000)).toBe(false);
+    expect(isPolarDay(NaN)).toBe(false);
+    expect(isPolarNight(0)).toBe(true);
+    expect(isPolarNight(300)).toBe(true);
+    expect(isPolarNight(40000)).toBe(false);
+    expect(isPolarNight(NaN)).toBe(false);
+  });
+});
+
+describe('skyTAt — light/dark from real sun times', () => {
+  it('normal day: dark before dawn, dawn at sunrise, noon brightest, dusk at sunset, night after', () => {
+    // sunrise 6, sunset 20 → solar noon 13.
+    expect(skyTAt(3, 6, 20)).toBe(0); // deep night
+    expect(skyTAt(6, 6, 20)).toBeCloseTo(0.08, 2); // dawn
+    expect(skyTAt(13, 6, 20)).toBeCloseTo(0.45, 2); // solar noon (brightest)
+    expect(skyTAt(20, 6, 20)).toBeCloseTo(0.82, 2); // dusk
+    expect(skyTAt(23, 6, 20)).toBe(1); // night
+  });
+  it('polar day: never reaches the night colours (stays light at midnight)', () => {
+    const midnight = skyTAt(0, 0, 0, 86400);
+    const noon = skyTAt(12, 0, 0, 86400);
+    expect(midnight).toBeGreaterThan(0.08); // brighter than dawn — i.e. not dark
+    expect(noon).toBeCloseTo(0.45, 2); // full daylight at noon
+    expect(noon).toBeGreaterThan(midnight);
+  });
+  it('polar night: stays dark all day', () => {
+    expect(skyTAt(0, 0, 0, 0)).toBeLessThan(0.05);
+    expect(skyTAt(12, 0, 0, 0)).toBeLessThanOrEqual(0.05); // faint noon lift, still dark
   });
 });
 

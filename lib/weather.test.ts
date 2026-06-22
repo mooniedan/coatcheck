@@ -52,6 +52,7 @@ function daily(over: Partial<DailyBlock>): DailyBlock {
     weather_code: [3],
     sunrise: ['2026-06-22T04:30'],
     sunset: ['2026-06-22T22:00'],
+    daylight_duration: [63000],
     ...over,
   };
 }

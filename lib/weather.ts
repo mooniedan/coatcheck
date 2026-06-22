@@ -58,6 +58,7 @@ export interface DailyBlock {
   weather_code: number[];
   sunrise: string[];
   sunset: string[];
+  daylight_duration: number[];
 }
 export interface HourlyBlock {
   time: string[];
@@ -72,7 +73,7 @@ export interface HourlyBlock {
 const CURRENT_FIELDS =
   'temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m';
 const DAILY_FIELDS =
-  'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,wind_speed_10m_max,weather_code,sunrise,sunset';
+  'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,wind_speed_10m_max,weather_code,sunrise,sunset,daylight_duration';
 const HOURLY_FIELDS =
   'temperature_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m';
 
@@ -164,6 +165,8 @@ export function dailyToForecast(
         feelsLikeC: feelsLikeMaxC,
         sunrise: d.sunrise?.[i] ?? '',
         sunset: d.sunset?.[i] ?? '',
+        // Seconds of daylight; NaN when unknown. ~86400 ⇒ polar day, ~0 ⇒ polar night.
+        daylightSeconds: d.daylight_duration?.[i] ?? NaN,
         hours: hoursByDate.get(date) ?? [],
       };
     })

@@ -154,21 +154,83 @@ export function parseLocalHour(iso: string): number {
   return Number(iso.slice(11, 13)) + Number(iso.slice(14, 16)) / 60;
 }
 
-// Map a clock hour (0–23) onto the sky model's t (06:00→21:00 ⇒ 0→1), clamped. Lets the real
-// selected hour drive the dawn/day/dusk visuals.
+// Map a clock hour (0–23) onto the sky model's t (06:00→21:00 ⇒ 0→1), clamped. Fallback when
+// real sun times aren't available; prefer skyTAt() which uses the actual sunrise/sunset.
 export function hourToSkyT(hour: number): number {
   return clamp((hour - HOUR_START) / (HOUR_END - HOUR_START), 0, 1);
 }
 
-// The slider's hour window for a day, anchored to real sunrise/sunset (whole hours). Falls
-// back to the canned 06:00–21:00 band when sun times are missing.
-export function dayWindow(sunrise: string, sunset: string): { start: number; end: number } {
+// Polar-day/night detection from Open-Meteo's daily daylight_duration (seconds). NaN ⇒ unknown
+// (treated as a normal day).
+const SECONDS_POLAR_DAY = 86_000; // ≈ 24h of daylight (midnight sun)
+const SECONDS_POLAR_NIGHT = 600; // ≈ no daylight (polar night)
+export function isPolarDay(daylightSeconds: number): boolean {
+  return Number.isFinite(daylightSeconds) && daylightSeconds >= SECONDS_POLAR_DAY;
+}
+export function isPolarNight(daylightSeconds: number): boolean {
+  return Number.isFinite(daylightSeconds) && daylightSeconds <= SECONDS_POLAR_NIGHT;
+}
+
+// The slider's hour window for a day, anchored to real sunrise/sunset (whole hours). Polar
+// day/night make sunrise/sunset degenerate (sunset rolls to the next day, etc.), so scrub the
+// whole 24h instead. Falls back to 06:00–21:00 when sun times are missing.
+export function dayWindow(
+  sunrise: string,
+  sunset: string,
+  daylightSeconds = NaN
+): { start: number; end: number } {
+  if (isPolarDay(daylightSeconds) || isPolarNight(daylightSeconds)) return { start: 0, end: 23 };
   const s = parseLocalHour(sunrise);
   const e = parseLocalHour(sunset);
   if (!Number.isFinite(s) || !Number.isFinite(e)) return { start: HOUR_START, end: HOUR_END };
   const start = clamp(Math.floor(s), 0, 23);
   const end = clamp(Math.ceil(e), start + 1, 23);
   return { start, end };
+}
+
+// Sky-arc anchors (see SKY_TOP/SKY_BOT): 0 deep night · 0.08 dawn · 0.45 solar noon (brightest)
+// · 0.82 dusk · 1 deep night.
+const T_DAWN = 0.08;
+const T_NOON = 0.45;
+const T_DUSK = 0.82;
+const TWILIGHT_H = 1.5; // hours of dawn/dusk ramp around sunrise/sunset
+
+// Map a real local hour to the sky arc using the day's actual sunrise/sunset (and daylight
+// duration for the polar cases). This is what makes the light/dark reflect reality: the sky is
+// only dark when the sun is actually down — high latitudes and midnight sun included.
+export function skyTAt(
+  hour: number,
+  sunriseHour: number,
+  sunsetHour: number,
+  daylightSeconds = NaN
+): number {
+  // Cosine phase: 1 at solar noon (≈12), -1 at solar midnight.
+  const phase = (h: number) => Math.cos(((h - 12) / 12) * Math.PI) * 0.5 + 0.5;
+
+  if (isPolarNight(daylightSeconds)) {
+    // Always dark; a faint lift toward solar noon so it isn't pitch black.
+    return 0.05 * phase(hour);
+  }
+  if (isPolarDay(daylightSeconds)) {
+    // Always light; bright at noon, golden-low at midnight — never reaches the night colours.
+    return 0.2 + (T_NOON - 0.2) * phase(hour);
+  }
+
+  const sr = Number.isFinite(sunriseHour) ? sunriseHour : HOUR_START;
+  const ss = Number.isFinite(sunsetHour) ? sunsetHour : HOUR_END;
+  const noon = (sr + ss) / 2;
+  if (hour <= sr) {
+    // Pre-dawn: ramp from deep night up to dawn over the last TWILIGHT_H hours before sunrise.
+    return clamp(((hour - (sr - TWILIGHT_H)) / TWILIGHT_H) * T_DAWN, 0, T_DAWN);
+  }
+  if (hour <= noon) {
+    return lerp(T_DAWN, T_NOON, (hour - sr) / Math.max(0.001, noon - sr));
+  }
+  if (hour <= ss) {
+    return lerp(T_NOON, T_DUSK, (hour - noon) / Math.max(0.001, ss - noon));
+  }
+  // Post-sunset: ramp from dusk down to deep night over TWILIGHT_H hours.
+  return clamp(T_DUSK + ((hour - ss) / TWILIGHT_H) * (1 - T_DUSK), T_DUSK, 1);
 }
 
 // ── Real-weather overrides ─────────────────────────────────────
