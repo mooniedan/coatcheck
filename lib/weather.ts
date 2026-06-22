@@ -37,7 +37,7 @@ export async function geocode(query: string): Promise<ResolvedLocation | null> {
 }
 
 // Shapes of the Open-Meteo response blocks we request.
-interface CurrentBlock {
+export interface CurrentBlock {
   time: string;
   temperature_2m: number;
   apparent_temperature: number;
@@ -47,7 +47,7 @@ interface CurrentBlock {
   weather_code: number;
   wind_speed_10m: number;
 }
-interface DailyBlock {
+export interface DailyBlock {
   time: string[];
   temperature_2m_max: number[];
   temperature_2m_min: number[];
@@ -63,7 +63,7 @@ const CURRENT_FIELDS =
 const DAILY_FIELDS =
   'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,wind_speed_10m_max,weather_code';
 
-function currentToSnapshot(c: CurrentBlock): WeatherSnapshot {
+export function currentToSnapshot(c: CurrentBlock): WeatherSnapshot {
   return {
     feelsLikeC: c.apparent_temperature,
     tempC: c.temperature_2m,
@@ -81,7 +81,7 @@ function currentToSnapshot(c: CurrentBlock): WeatherSnapshot {
  * weather code isn't itself a rain code (a single daily code under-reports shower risk). */
 const DAILY_RAIN_PROB = 50;
 
-function dailyToForecast(d: DailyBlock): DailyForecast[] {
+export function dailyToForecast(d: DailyBlock): DailyForecast[] {
   return d.time
     .map((date, i): DailyForecast | null => {
       const code = d.weather_code[i];

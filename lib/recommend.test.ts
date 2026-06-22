@@ -80,4 +80,42 @@ describe('recommend', () => {
       'Tops',
     ]);
   });
+
+  it('returns four empty arrays for an empty catalog (no crash)', () => {
+    const rec = recommend(weather(), []);
+    expect(rec.itemsByCategory).toEqual({
+      Tops: [],
+      Bottoms: [],
+      Outerwear: [],
+      Accessories: [],
+    });
+  });
+
+  it('orders each category heaviest-rated (lowest minTempC) first', () => {
+    const rec = recommend(weather({ feelsLikeC: 4 }), DEFAULT_CATALOG);
+    const tops = rec.itemsByCategory.Tops;
+    for (let i = 1; i < tops.length; i++) {
+      expect(tops[i].minTempC).toBeGreaterThanOrEqual(tops[i - 1].minTempC);
+    }
+  });
+
+  it('includes both raincoat and windbreaker when wet AND windy', () => {
+    const rec = recommend(
+      weather({ feelsLikeC: 12, isRaining: true, windKph: 30 }),
+      DEFAULT_CATALOG
+    );
+    expect(ids(rec.itemsByCategory.Outerwear)).toEqual(
+      expect.arrayContaining(['raincoat', 'windbreaker'])
+    );
+  });
+
+  it('handles extreme cold and heat without empty essentials', () => {
+    const freezing = recommend(weather({ feelsLikeC: -25 }), DEFAULT_CATALOG);
+    expect(ids(freezing.itemsByCategory.Tops)).toContain('thermal_top');
+    expect(freezing.itemsByCategory.Bottoms.length).toBeGreaterThan(0);
+
+    const scorching = recommend(weather({ feelsLikeC: 45 }), DEFAULT_CATALOG);
+    expect(ids(scorching.itemsByCategory.Tops)).toContain('tank');
+    expect(scorching.itemsByCategory.Bottoms.length).toBeGreaterThan(0);
+  });
 });

@@ -17,6 +17,7 @@ describe('resolveComfort', () => {
   });
   it('falls back to generic when nothing is set', () => {
     expect(resolveComfort(null, null)).toEqual(GENERIC_COMFORT);
+    expect(resolveComfort(undefined, undefined)).toEqual(GENERIC_COMFORT);
   });
 });
 
@@ -32,6 +33,9 @@ describe('applyFeedback', () => {
   });
   it('clamps to the maximum offset', () => {
     expect(applyFeedback({ offsetC: MAX_OFFSET_C }, 'too_cold').offsetC).toBe(MAX_OFFSET_C);
+  });
+  it('clamps to the minimum (negative) offset', () => {
+    expect(applyFeedback({ offsetC: -MAX_OFFSET_C }, 'too_hot').offsetC).toBe(-MAX_OFFSET_C);
   });
 });
 
