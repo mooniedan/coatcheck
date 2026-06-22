@@ -7,6 +7,7 @@
 // live in globals.css (ahs*). Kept close to the original so it can be re-synced.
 
 import { useRef, type ReactNode } from 'react';
+import type { Recommendation, WeatherSnapshot } from '@/lib/types';
 
 // ── Interpolation helpers ──────────────────────────────────────
 export function lerp(a: number, b: number, t: number) {
@@ -148,6 +149,81 @@ export function tempAt(t: number) {
   return Math.round(sampleNum(TEMP, t));
 }
 
+// ── Real-weather overrides ─────────────────────────────────────
+// The day model above drives the illustrative "day tour". For the resting state we instead
+// derive the scene from the live Open-Meteo snapshot + the actual recommendation, so the
+// painted weather and the figure's layers match what the user is being told.
+
+export interface SceneWeather {
+  /** Rain overlay + wet-path sheen, 0..1. */
+  rain: number;
+  /** Cloud-cover opacity, 0..1. */
+  clouds: number;
+  /** Clear-sky factor (0 overcast … 1 clear); multiplies the time-of-day sun-ray envelope. */
+  clearFactor: number;
+}
+
+const DRIZZLE = new Set([51, 53, 55]);
+const RAIN_LIGHT = new Set([61, 80, 81]);
+const RAIN_HEAVY = new Set([65, 82, 95, 96, 99]);
+const SNOW = new Set([71, 73, 75]);
+
+// Map a live weather snapshot → scene overlay levels (WMO weather_code driven).
+export function sceneWeatherFromSnapshot(w: WeatherSnapshot): SceneWeather {
+  const code = w.weatherCode;
+
+  let clouds: number;
+  let clearFactor: number;
+  if (code === 0) {
+    clouds = 0.12;
+    clearFactor = 1;
+  } else if (code === 1) {
+    clouds = 0.3;
+    clearFactor = 0.78;
+  } else if (code === 2) {
+    clouds = 0.5;
+    clearFactor = 0.42;
+  } else {
+    // 3 overcast, 45/48 fog, all precip/snow/storm → heavy cover, no direct sun
+    clouds = code === 3 ? 0.82 : 0.9;
+    clearFactor = 0;
+  }
+
+  let rain = 0;
+  if (w.isRaining && !SNOW.has(code)) {
+    if (DRIZZLE.has(code)) rain = 0.35;
+    else if (RAIN_LIGHT.has(code)) rain = 0.6;
+    else if (code === 63) rain = 0.72;
+    else if (RAIN_HEAVY.has(code)) rain = 0.92;
+    else rain = 0.5;
+    // nudge by probability around a 60% pivot
+    rain = clamp(rain + (w.precipitationProbability - 60) / 400, 0.25, 0.95);
+  } else if (!SNOW.has(code) && w.precipitationProbability >= 60) {
+    rain = 0.2; // likely soon, hint at it
+  }
+
+  return { rain, clouds, clearFactor };
+}
+
+// Map the actual recommendation → which figure layers are worn. Essentials (base/bottoms/
+// footwear) always on; the rest reflect the recommended items by id.
+export function outfitFromRecommendation(rec: Recommendation): Outfit {
+  const ids = new Set(Object.values(rec.itemsByCategory).flat().map((i) => i.id));
+  const has = (id: string) => ids.has(id);
+  const outerwear = rec.itemsByCategory.Outerwear ?? [];
+  return {
+    base: 1,
+    bottoms: 1,
+    footwear: 1,
+    mid: has('sweater') || has('thermal_top') ? 1 : 0,
+    shell: outerwear.length > 0 ? 1 : 0,
+    scarf: has('scarf') ? 1 : 0,
+    beanie: has('beanie') ? 1 : 0,
+    umbrella: has('umbrella') || has('raincoat') ? 1 : 0,
+    sunglasses: has('sunglasses') ? 1 : 0,
+  };
+}
+
 // ── Scene layers ───────────────────────────────────────────────
 function Sky({ t }: { t: number }) {
   const top = sampleHex(SKY_TOP, t);
@@ -163,7 +239,7 @@ function Sky({ t }: { t: number }) {
   );
 }
 
-function Celestial({ t }: { t: number }) {
+function Celestial({ t, clearFactor }: { t: number; clearFactor?: number }) {
   const c = celestialAt(t);
   const sunColor = sampleHex(
     [
@@ -174,6 +250,8 @@ function Celestial({ t }: { t: number }) {
     ],
     t
   );
+  // Overcast/storm sky (clearFactor→0) masks the sun disc; the moon is left untouched.
+  const sunOpacity = c.isMoon ? 1 : (clearFactor ?? 1);
   return (
     <div
       style={{
@@ -184,7 +262,8 @@ function Celestial({ t }: { t: number }) {
         height: 60,
         marginLeft: -30,
         marginTop: -30,
-        transition: 'left 60ms linear, top 60ms linear',
+        opacity: sunOpacity,
+        transition: 'left 60ms linear, top 60ms linear, opacity 0.4s ease',
         pointerEvents: 'none',
       }}
     >
@@ -203,8 +282,8 @@ function Celestial({ t }: { t: number }) {
   );
 }
 
-function Clouds({ t, walking }: { t: number; walking: boolean }) {
-  const opacity = sampleNum(CLOUDS, t);
+function Clouds({ t, walking, opacity: opacityOverride }: { t: number; walking: boolean; opacity?: number }) {
+  const opacity = opacityOverride ?? sampleNum(CLOUDS, t);
   const tint = sampleHex(
     [
       [0.0, '#B59FCC'],
@@ -264,7 +343,7 @@ function FarHills({ t, walking }: { t: number; walking: boolean }) {
         width="200%"
         height="100%"
         viewBox="0 0 1400 200"
-        preserveAspectRatio="xMidYEnd slice"
+        preserveAspectRatio="xMidYMax slice"
         style={{
           position: 'absolute',
           left: 0,
@@ -304,7 +383,7 @@ function MidBuildings({ t, walking }: { t: number; walking: boolean }) {
         width="200%"
         height="100%"
         viewBox="0 0 1400 200"
-        preserveAspectRatio="xMidYEnd slice"
+        preserveAspectRatio="xMidYMax slice"
         style={{
           position: 'absolute',
           left: 0,
@@ -370,7 +449,7 @@ function MidBuildings({ t, walking }: { t: number; walking: boolean }) {
   );
 }
 
-function Foreground({ t, walking }: { t: number; walking: boolean }) {
+function Foreground({ t, walking, wetness }: { t: number; walking: boolean; wetness?: number }) {
   const pathTint = sampleHex(
     [
       [0.0, '#1F1A2E'],
@@ -382,7 +461,7 @@ function Foreground({ t, walking }: { t: number; walking: boolean }) {
     ],
     t
   );
-  const wetSheen = sampleNum(RAIN, t) * 0.6;
+  const wetSheen = (wetness ?? sampleNum(RAIN, t)) * 0.6;
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '18%', pointerEvents: 'none' }}>
       <div
@@ -431,9 +510,20 @@ function Foreground({ t, walking }: { t: number; walking: boolean }) {
   );
 }
 
-function Rain({ t, walking }: { t: number; walking: boolean }) {
-  const intensity = sampleNum(RAIN, t);
+function Rain({
+  t,
+  walking,
+  intensity: intensityOverride,
+  animate,
+}: {
+  t: number;
+  walking: boolean;
+  intensity?: number;
+  animate?: boolean;
+}) {
+  const intensity = intensityOverride ?? sampleNum(RAIN, t);
   if (intensity < 0.04) return null;
+  const falling = animate ?? walking;
   return (
     <div
       style={{ position: 'absolute', inset: 0, opacity: intensity, pointerEvents: 'none', overflow: 'hidden' }}
@@ -458,7 +548,7 @@ function Rain({ t, walking }: { t: number; walking: boolean }) {
                 x2={x - 3}
                 y2={y - 2}
                 style={{
-                  animation: walking ? `ahsRain ${0.55 + (i % 5) * 0.05}s linear infinite` : 'none',
+                  animation: falling ? `ahsRain ${0.55 + (i % 5) * 0.05}s linear infinite` : 'none',
                   animationDelay: `${(i % 7) * -0.08}s`,
                   transformOrigin: 'center',
                 }}
@@ -471,8 +561,9 @@ function Rain({ t, walking }: { t: number; walking: boolean }) {
   );
 }
 
-function SunRays({ t }: { t: number }) {
-  const o = sampleNum(SUN_RAYS, t);
+function SunRays({ t, clearFactor }: { t: number; clearFactor?: number }) {
+  // Keep the time-of-day envelope (rays only mid-day); scale by how clear the real sky is.
+  const o = sampleNum(SUN_RAYS, t) * (clearFactor ?? 1);
   if (o < 0.04) return null;
   const c = celestialAt(t);
   return (
@@ -508,8 +599,8 @@ function SunRays({ t }: { t: number }) {
 const SKIN = '#E2B89A';
 const HAIR = '#3D2A1F';
 
-function Figure({ t, walking }: { t: number; walking: boolean }) {
-  const o = outfitAt(t);
+function Figure({ t, walking, outfit }: { t: number; walking: boolean; outfit?: Outfit }) {
+  const o = outfit ?? outfitAt(t);
   const legL = walking ? 'ahsLegL 1.1s ease-in-out infinite' : 'none';
   const legR = walking ? 'ahsLegR 1.1s ease-in-out infinite' : 'none';
   const armL = walking ? 'ahsArmL 1.1s ease-in-out infinite' : 'none';
@@ -724,12 +815,20 @@ export function HeroScene({
   walking,
   onTap,
   clockLabel,
+  weather,
+  outfit,
+  reduced,
   children,
 }: {
   t: number;
   walking: boolean;
   onTap?: () => void;
   clockLabel?: string;
+  /** Real-weather overlay overrides (resting state). Omit to use the canned day-tour curves. */
+  weather?: SceneWeather;
+  /** Real recommended outfit for the figure. Omit to use the canned day-tour layering. */
+  outfit?: Outfit;
+  reduced?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -738,14 +837,19 @@ export function HeroScene({
       style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', cursor: 'pointer' }}
     >
       <Sky t={t} />
-      <Celestial t={t} />
-      <SunRays t={t} />
-      <Clouds t={t} walking={walking} />
+      <Celestial t={t} clearFactor={weather?.clearFactor} />
+      <SunRays t={t} clearFactor={weather?.clearFactor} />
+      <Clouds t={t} walking={walking} opacity={weather?.clouds} />
       <FarHills t={t} walking={walking} />
       <MidBuildings t={t} walking={walking} />
-      <Foreground t={t} walking={walking} />
-      <Rain t={t} walking={walking} />
-      <Figure t={t} walking={walking} />
+      <Foreground t={t} walking={walking} wetness={weather?.rain} />
+      <Rain
+        t={t}
+        walking={walking}
+        intensity={weather?.rain}
+        animate={weather ? !reduced : undefined}
+      />
+      <Figure t={t} walking={walking} outfit={outfit} />
       <HeroClock t={t} label={clockLabel} />
       {children}
     </div>

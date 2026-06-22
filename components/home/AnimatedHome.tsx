@@ -14,6 +14,8 @@ import {
   formatClock,
   HOUR_START,
   HOUR_END,
+  sceneWeatherFromSnapshot,
+  outfitFromRecommendation,
 } from './scene';
 import { Icon } from '@/components/ui/Icon';
 import { getItemIcon } from '@/lib/itemIcons';
@@ -130,6 +132,11 @@ export default function AnimatedHome({
   const restingTemp = phase === 'rest' ? Math.round(rec.weather.feelsLikeC) : undefined;
   const clockLabel = phase === 'rest' ? nowClock() : undefined;
 
+  // Resting state paints the real weather + the actually-recommended outfit. The 6s tour and
+  // manual scrub stay on the illustrative day-model curves.
+  const sceneWeather = phase === 'rest' ? sceneWeatherFromSnapshot(rec.weather) : undefined;
+  const sceneOutfit = phase === 'rest' ? outfitFromRecommendation(rec) : undefined;
+
   const items: ClothingItem[] = CATEGORIES.flatMap((c) => rec.itemsByCategory[c] ?? []);
 
   return (
@@ -137,7 +144,15 @@ export default function AnimatedHome({
       {/* Hero scene */}
       <div className="relative" style={{ height: 'clamp(380px, 56vh, 520px)' }}>
         <div className="absolute inset-0">
-          <HeroScene t={t} walking={walking && !exploded} onTap={onSceneTap} clockLabel={clockLabel}>
+          <HeroScene
+            t={t}
+            walking={walking && !exploded}
+            onTap={onSceneTap}
+            clockLabel={clockLabel}
+            weather={sceneWeather}
+            outfit={sceneOutfit}
+            reduced={reduced}
+          >
             <FeelsBadge t={t} hidden={controls || exploded} overrideTemp={exploded ? undefined : restingTemp} />
           </HeroScene>
         </div>
