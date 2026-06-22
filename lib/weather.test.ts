@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   currentToSnapshot,
   dailyToForecast,
+  geocodeSearch,
   hourlyByDate,
   resolveLocationFromQuery,
   type CurrentBlock,
@@ -115,6 +116,34 @@ describe('hourlyByDate', () => {
     expect(day[1].isRaining).toBe(true); // precipitation > 0
     expect(day[0].isRaining).toBe(false);
     expect(day[1].feelsLikeC).toBe(17);
+  });
+});
+
+describe('geocodeSearch', () => {
+  it('maps geocoding hits to ResolvedLocation (incl. countryCode)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [
+            { name: 'Paris', latitude: 48.85, longitude: 2.35, country: 'France', country_code: 'FR', admin1: 'Île-de-France' },
+            { name: 'Paris', latitude: 33.66, longitude: -95.55, country: 'United States', country_code: 'US', admin1: 'Texas' },
+          ],
+        }),
+      })
+    );
+    const out = await geocodeSearch('Paris', 5);
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({ name: 'Paris', countryCode: 'FR', admin1: 'Île-de-France' });
+    expect(out[1]).toMatchObject({ country: 'United States', admin1: 'Texas' });
+    vi.unstubAllGlobals();
+  });
+
+  it('returns an empty list when there are no results', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
+    expect(await geocodeSearch('zzzznowhere')).toEqual([]);
+    vi.unstubAllGlobals();
   });
 });
 

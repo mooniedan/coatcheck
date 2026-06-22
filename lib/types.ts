@@ -43,6 +43,8 @@ export interface ResolvedLocation {
   latitude: number;
   longitude: number;
   country?: string;
+  /** ISO-3166 alpha-2 country code (for a flag glyph). */
+  countryCode?: string;
   admin1?: string;
 }
 
@@ -156,4 +158,8 @@ export interface ProfilesResponse {
 
 export interface ProfileResponse {
   profile: Profile;
+}
+
+export interface GeocodeResponse {
+  results: ResolvedLocation[];
 }

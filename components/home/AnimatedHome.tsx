@@ -229,7 +229,7 @@ export default function AnimatedHome({
       description: snapshot.description,
       rec: hourRec,
     };
-  }, [day?.date, day?.hours, selectedHour, comfortOffsetC]);
+  }, [day?.hours, selectedHour, comfortOffsetC]);
 
   const useHour = hourView !== null;
   const walking = !reduced && phase === 'tour';
@@ -315,10 +315,11 @@ export default function AnimatedHome({
       {/* Timeline + feedback */}
       <div className="border-t border-outline-variant bg-surface pt-2">
         <div className="flex items-center justify-between px-4 pb-1">
-          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-on-surface">
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-sm font-medium text-on-surface">
             <Icon name="pin" size={15} color="var(--md-primary)" />
-            {location.name}
-            {location.admin1 ? `, ${location.admin1}` : ''}
+            <span className="truncate">
+              {[location.name, location.admin1, location.country].filter(Boolean).join(', ')}
+            </span>
           </span>
           <span className="text-xs text-on-surface-variant">{description}</span>
         </div>

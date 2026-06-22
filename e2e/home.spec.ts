@@ -48,6 +48,19 @@ test.describe('home', () => {
     await expect(page.getByRole('button', { name: 'Perfect' })).toBeDisabled();
   });
 
+  test('city autocomplete disambiguates and loads the picked place', async ({ page }) => {
+    await page.goto('/');
+    // Typing shows a dropdown of candidate places (Paris exists in many countries).
+    await page.getByPlaceholder('City or address…').pressSequentially('Paris', { delay: 40 });
+    const options = page.getByRole('option');
+    await expect(options.first()).toBeVisible();
+    expect(await options.count()).toBeGreaterThan(1);
+
+    // Pick the Texas one specifically; the loaded header should reflect Texas, not France.
+    await page.getByRole('option', { name: /Texas/ }).click();
+    await expect(page.getByText(/Paris, Texas/)).toBeVisible();
+  });
+
   test('invalid city surfaces an error', async ({ page }) => {
     await page.goto('/');
     await page.getByPlaceholder('City or address…').fill('zzzzzzznotacity');

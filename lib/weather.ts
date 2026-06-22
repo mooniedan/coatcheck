@@ -11,29 +11,40 @@ const FORECAST_URL =
 const GEOCODING_URL =
   process.env.OPEN_METEO_GEOCODING_URL ?? 'https://geocoding-api.open-meteo.com/v1/search';
 
-/** Resolve a free-text place query to coordinates (first match). */
-export async function geocode(query: string): Promise<ResolvedLocation | null> {
-  const url = `${GEOCODING_URL}?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
+interface GeoHit {
+  name: string;
+  latitude: number;
+  longitude: number;
+  country?: string;
+  country_code?: string;
+  admin1?: string;
+}
+
+function toLocation(h: GeoHit): ResolvedLocation {
+  return {
+    name: h.name,
+    latitude: h.latitude,
+    longitude: h.longitude,
+    country: h.country,
+    countryCode: h.country_code,
+    admin1: h.admin1,
+  };
+}
+
+/** Resolve a free-text place query to the top `count` candidate locations (for autocomplete). */
+export async function geocodeSearch(query: string, count = 5): Promise<ResolvedLocation[]> {
+  const n = Math.min(Math.max(count, 1), 10);
+  const url = `${GEOCODING_URL}?name=${encodeURIComponent(query)}&count=${n}&language=en&format=json`;
   const res = await fetch(url, { next: { revalidate: 86_400 } });
   if (!res.ok) throw new Error(`Geocoding failed: ${res.status}`);
-  const data = (await res.json()) as {
-    results?: Array<{
-      name: string;
-      latitude: number;
-      longitude: number;
-      country?: string;
-      admin1?: string;
-    }>;
-  };
-  const hit = data.results?.[0];
-  if (!hit) return null;
-  return {
-    name: hit.name,
-    latitude: hit.latitude,
-    longitude: hit.longitude,
-    country: hit.country,
-    admin1: hit.admin1,
-  };
+  const data = (await res.json()) as { results?: GeoHit[] };
+  return (data.results ?? []).map(toLocation);
+}
+
+/** Resolve a free-text place query to coordinates (first/best match). */
+export async function geocode(query: string): Promise<ResolvedLocation | null> {
+  const [first] = await geocodeSearch(query, 1);
+  return first ?? null;
 }
 
 // Shapes of the Open-Meteo response blocks we request.

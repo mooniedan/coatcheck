@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import SignInButton from '@/components/SignInButton';
+import CitySearch from '@/components/CitySearch';
 import AnimatedHome from '@/components/home/AnimatedHome';
 import WeekStrip from '@/components/home/WeekStrip';
 import { Icon } from '@/components/ui/Icon';
@@ -19,7 +20,6 @@ import type {
 } from '@/lib/types';
 
 export default function Home() {
-  const [query, setQuery] = useState('');
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [rec, setRec] = useState<Recommendation | null>(null);
   const [week, setWeek] = useState<DayRecommendation[]>([]);
@@ -53,8 +53,10 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  // `displayLocation` lets a picked autocomplete result drive the header label even though we
+  // fetch by lat/lng (the coordinate path resolves to a generic "Your location" name).
   const fetchRecommendation = useCallback(
-    async (params: string) => {
+    async (params: string, displayLocation?: ResolvedLocation) => {
       setLoading(true);
       setError(null);
       setFeedbackMsg(null);
@@ -65,7 +67,7 @@ export default function Home() {
         if (!res.ok || 'error' in data) {
           throw new Error(('error' in data && data.error) || 'Something went wrong');
         }
-        setLocation(data.location);
+        setLocation(displayLocation ?? data.location);
         setRec(data.recommendation);
         setWeek(data.week ?? []);
         setComfortOffsetC(data.comfortOffsetC ?? 0);
@@ -81,12 +83,18 @@ export default function Home() {
     [activeProfile]
   );
 
-  function searchCity(e: React.FormEvent) {
-    e.preventDefault();
-    if (query.trim()) fetchRecommendation(`q=${encodeURIComponent(query.trim())}`);
-  }
+  // Picked a suggestion → fetch by its exact coordinates, display the picked place.
+  const pickLocation = (loc: ResolvedLocation) =>
+    fetchRecommendation(`lat=${loc.latitude}&lng=${loc.longitude}`, loc);
+
+  // Free-text submit (no suggestion chosen) → geocode the typed query (best match).
+  const searchText = (q: string) => fetchRecommendation(`q=${encodeURIComponent(q)}`);
 
   function useMyLocation() {
+    if (!navigator.geolocation) {
+      setError('Location is not available in this browser.');
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => fetchRecommendation(`lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`),
       () => setError('Could not get your location')
@@ -149,29 +157,7 @@ export default function Home() {
         </Link>
       )}
 
-      <form onSubmit={searchCity} className="flex flex-col gap-2 sm:flex-row">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="City or address…"
-          className="flex-1 rounded-full border border-outline-variant bg-surface-lowest px-5 py-3 text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/70 focus:border-primary"
-        />
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            className="flex-1 rounded-full bg-primary px-6 py-3 font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90 sm:flex-none"
-          >
-            Check
-          </button>
-          <button
-            type="button"
-            onClick={useMyLocation}
-            className="inline-flex items-center gap-1.5 rounded-full bg-surface-high px-4 py-3 font-medium text-on-surface transition-colors hover:bg-surface-highest"
-          >
-            <span aria-hidden>📍</span> Me
-          </button>
-        </div>
-      </form>
+      <CitySearch onPick={pickLocation} onSubmitText={searchText} onUseMyLocation={useMyLocation} />
 
       {profiles.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
