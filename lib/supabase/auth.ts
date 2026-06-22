@@ -35,6 +35,30 @@ export async function requireUser(): Promise<{ user: User } | NextResponse> {
 //
 //   const auth = await requireAdmin();
 //   if (auth instanceof NextResponse) return auth;
+// Resolve a signed-in email's access: its elevated role (if any) and whether it may use the app
+// as a tester. Staff are always allowed; everyone else must be allow-listed in beta_signups
+// (allowed=true). If the `allowed` column is missing (pre-0006) the check fails open. Shared by
+// /api/me and the OAuth callback so the gate is identical in both places.
+export async function resolveAccess(
+  email: string | undefined
+): Promise<{ role: string; allowed: boolean }> {
+  const admin = createAdminClient();
+  const emailLc = (email ?? '').toLowerCase();
+  const { data: grant } = await admin
+    .from('admin_emails')
+    .select('role')
+    .eq('email', emailLc)
+    .maybeSingle();
+  const role = grant?.role ?? 'user';
+  if (ADMIN_ROLES.has(role)) return { role, allowed: true };
+  const { data: signup, error } = await admin
+    .from('beta_signups')
+    .select('allowed')
+    .eq('email', emailLc)
+    .maybeSingle();
+  return { role, allowed: error ? true : Boolean(signup?.allowed) };
+}
+
 async function roleFor(email: string | undefined): Promise<string | null> {
   const admin = createAdminClient();
   const { data } = await admin

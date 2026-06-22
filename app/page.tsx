@@ -169,13 +169,20 @@ export default function Home() {
       )}
 
       {waitlisted && (
-        <div className="flex items-start gap-2 rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant">
+        <Link
+          href="/beta"
+          className="flex items-center gap-2 rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant transition-colors hover:bg-surface-high"
+        >
           <Icon name="info" size={18} color="var(--md-primary)" strokeWidth={2} />
           <span>
-            You’re signed in and on the <span className="font-medium text-on-surface">closed-testing</span>{' '}
-            waitlist — we’ll let you in as spots open up. Weather still works in the meantime.
+            You’re signed in but not yet a tester. Coat Check is in{' '}
+            <span className="font-medium text-on-surface">closed testing</span>.
           </span>
-        </div>
+          <span className="ml-auto inline-flex items-center gap-1 font-medium text-primary">
+            Confirm your spot
+            <Icon name="chevronRight" size={16} strokeWidth={2} />
+          </span>
+        </Link>
       )}
 
       <CitySearch onPick={pickLocation} onSubmitText={searchText} onUseMyLocation={useMyLocation} />

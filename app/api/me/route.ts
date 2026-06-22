@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveAccess } from '@/lib/supabase/auth';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
 
 export const runtime = 'nodejs';
@@ -24,36 +25,11 @@ export async function GET() {
 
   try {
     const admin = createAdminClient();
+    const { role, allowed } = await resolveAccess(user.email);
 
-    // Resolve any elevated role granted to this email (admin / superadmin). Normalize case:
-    // Google emails can arrive mixed-case, but the grant list is stored lowercase.
-    const emailLc = (user.email ?? '').toLowerCase();
-    const { data: grant } = await admin
-      .from('admin_emails')
-      .select('role')
-      .eq('email', emailLc)
-      .maybeSingle();
-    const role: string = grant?.role ?? 'user';
-    const isStaff = role === 'admin' || role === 'superadmin';
-
-    // Invite-only gate: only staff or allow-listed emails become testers. Everyone else is
-    // captured on the waitlist and shown the closed-testing message (no account provisioned).
-    let allowed = isStaff;
+    // Invite-only gate: only staff or allow-listed emails become testers. Everyone else stays
+    // signed in but waitlisted — they explicitly opt in on the /beta page (no silent add here).
     if (!allowed) {
-      const { data: signup, error } = await admin
-        .from('beta_signups')
-        .select('allowed')
-        .eq('email', emailLc)
-        .maybeSingle();
-      // If the `allowed` column doesn't exist yet (pre-0006), fail open so nobody is locked out.
-      allowed = error ? true : Boolean(signup?.allowed);
-    }
-
-    if (!allowed) {
-      // Capture them on the waitlist (don't overwrite an existing row's allowed/source).
-      await admin
-        .from('beta_signups')
-        .upsert({ email: emailLc, source: 'oauth' }, { onConflict: 'email', ignoreDuplicates: true });
       return NextResponse.json({
         user: { id: user.id, email: user.email, role },
         account: null,

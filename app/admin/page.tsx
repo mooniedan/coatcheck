@@ -6,7 +6,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Icon } from '@/components/ui/Icon';
 import type {
   AdminAccount,
   AdminGrant,
@@ -63,6 +62,15 @@ export default function AdminPage() {
   const accountEmails = new Set(accounts.map((a) => (a.email ?? '').toLowerCase()));
   const invitedPending = signups.filter((s) => s.allowed && !accountEmails.has(s.email));
 
+  // Only accounts whose email is actually allow-listed (staff or allowed signup) count as active
+  // testers. This hides stale accounts (e.g. created during the pre-migration fail-open window or
+  // after a revoke) without deleting any data — the sign-in gate already waitlists them.
+  const allowedEmails = new Set([
+    ...admins.map((a) => a.email.toLowerCase()),
+    ...signups.filter((s) => s.allowed).map((s) => s.email.toLowerCase()),
+  ]);
+  const activeAccounts = accounts.filter((a) => allowedEmails.has((a.email ?? '').toLowerCase()));
+
   async function changeCohort(account: AdminAccount, cohort: Cohort) {
     const prev = account.cohort;
     setAccounts((list) => list.map((a) => (a.id === account.id ? { ...a, cohort } : a)));
@@ -74,13 +82,13 @@ export default function AdminPage() {
     if (!res.ok) setAccounts((list) => list.map((a) => (a.id === account.id ? { ...a, cohort: prev } : a)));
   }
 
-  async function invite(emails: string[]) {
+  async function invite(emails: string[], allowed = true) {
     if (emails.length === 0) return;
     setBusy(true);
     const res = await fetch('/api/admin/invites', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emails }),
+      body: JSON.stringify({ emails, allowed }),
     });
     if (res.ok) await load();
     setBusy(false);
@@ -129,9 +137,14 @@ export default function AdminPage() {
 
       {status === 'ready' && (
         <>
-          <Testers accounts={accounts} onCohort={changeCohort} />
+          <Testers
+            accounts={activeAccounts}
+            invited={invitedPending}
+            busy={busy}
+            onCohort={changeCohort}
+            onRevoke={(email) => invite([email], false)}
+          />
           <Waitlist waitlist={waitlist} busy={busy} onApprove={invite} />
-          <Invited invited={invitedPending} />
           {isSuper && (
             <Admins admins={admins} myEmail={myEmail} busy={busy} onAdd={addAdmin} onRemove={removeAdmin} />
           )}
@@ -158,19 +171,27 @@ const listClass =
 
 function Testers({
   accounts,
+  invited,
+  busy,
   onCohort,
+  onRevoke,
 }: {
   accounts: AdminAccount[];
+  invited: BetaSignup[];
+  busy: boolean;
   onCohort: (a: AdminAccount, c: Cohort) => void;
+  onRevoke: (email: string) => void;
 }) {
+  const total = accounts.length + invited.length;
   return (
-    <Section title="Testers" count={`${accounts.length} account(s)`}>
-      {accounts.length === 0 ? (
+    <Section title="Testers" count={`${total} total`}>
+      {total === 0 ? (
         <p className="text-sm text-on-surface-variant">
-          No accounts yet — they appear here once invited people sign in.
+          No testers yet — add people from the waitlist below.
         </p>
       ) : (
         <ul className={listClass}>
+          {/* Active accounts (signed in) — adjust cohort. */}
           {accounts.map((a) => (
             <li key={a.id} className="flex items-center justify-between gap-3 px-4 py-3">
               <span className="min-w-0">
@@ -191,6 +212,24 @@ function Testers({
                   ))}
                 </select>
               </label>
+            </li>
+          ))}
+          {/* Invited (allow-listed) but not yet signed in. */}
+          {invited.map((s) => (
+            <li key={s.email} className="flex items-center justify-between gap-3 px-4 py-3">
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium text-on-surface">{s.email}</span>
+                <span className="block text-xs text-on-surface-variant">
+                  Invited{s.approved_at ? ` ${fmtDate(s.approved_at)}` : ''} · awaiting sign-in
+                </span>
+              </span>
+              <button
+                onClick={() => onRevoke(s.email)}
+                disabled={busy}
+                className="shrink-0 rounded-full border border-outline-variant px-3 py-1.5 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-high disabled:opacity-50"
+              >
+                Remove
+              </button>
             </li>
           ))}
         </ul>
@@ -295,27 +334,6 @@ function Waitlist({
           </ul>
         </>
       )}
-    </Section>
-  );
-}
-
-function Invited({ invited }: { invited: BetaSignup[] }) {
-  if (invited.length === 0) return null;
-  return (
-    <Section title="Invited (awaiting sign-in)" count={`${invited.length}`}>
-      <ul className={listClass}>
-        {invited.map((s) => (
-          <li key={s.email} className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="inline-flex min-w-0 items-center gap-2">
-              <Icon name="check" size={15} color="var(--cc-just)" strokeWidth={2.4} />
-              <span className="truncate text-sm text-on-surface">{s.email}</span>
-            </span>
-            <span className="shrink-0 text-xs text-on-surface-variant">
-              invited {s.approved_at ? fmtDate(s.approved_at) : ''}
-            </span>
-          </li>
-        ))}
-      </ul>
     </Section>
   );
 }
