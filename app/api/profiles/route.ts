@@ -67,7 +67,10 @@ export async function POST(request: NextRequest) {
     .select('id, display_name, relationship, comfort_model')
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('POST /api/profiles insert failed:', error);
+    return NextResponse.json({ error: 'Could not create profile' }, { status: 500 });
+  }
   return NextResponse.json({ profile: data });
 }
 
@@ -99,6 +102,9 @@ export async function DELETE(request: NextRequest) {
     .delete()
     .eq('id', id)
     .eq('account_id', accountId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('DELETE /api/profiles failed:', error);
+    return NextResponse.json({ error: 'Could not remove profile' }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geocode, getForecast } from '@/lib/weather';
+import { getForecast, resolveLocationFromQuery } from '@/lib/weather';
 import { recommend } from '@/lib/recommend';
 import { DEFAULT_CATALOG } from '@/lib/catalog';
 import { resolveComfort } from '@/lib/thresholds';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { isSupabaseConfigured } from '@/lib/supabase/env';
 import type { ComfortModel, DailyForecast, DayRecommendation, WeatherSnapshot } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -19,14 +21,9 @@ export async function GET(request: NextRequest) {
   const profileId = searchParams.get('profileId');
 
   try {
-    let location;
-    if (lat && lng) {
-      location = { name: 'Your location', latitude: Number(lat), longitude: Number(lng) };
-    } else if (q) {
-      location = await geocode(q);
-      if (!location) return NextResponse.json({ error: 'Location not found' }, { status: 404 });
-    } else {
-      return NextResponse.json({ error: 'Provide q or lat/lng' }, { status: 400 });
+    const location = await resolveLocationFromQuery(q, lat, lng);
+    if ('error' in location) {
+      return NextResponse.json({ error: location.error }, { status: location.status });
     }
 
     const { current, week } = await getForecast(location.latitude, location.longitude);
@@ -41,8 +38,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ location, recommendation, week: weekRecommendations });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Recommendation failed';
-    return NextResponse.json({ error: message }, { status: 502 });
+    console.error('GET /api/recommendations failed:', err);
+    return NextResponse.json({ error: 'Recommendation failed' }, { status: 502 });
   }
 }
 
@@ -64,9 +61,11 @@ function dayToSnapshot(d: DailyForecast): WeatherSnapshot {
 }
 
 // Loads the profile's learned comfort model when signed in; falls back to generic.
-// Tolerant of a not-yet-migrated database so the app works before Supabase is wired up.
+// Reads via the service_role client (RLS denies SELECT on `profiles` to the anon/auth role,
+// so the RLS-bound client always returns null) after verifying the profile belongs to the
+// caller. Tolerant of a not-yet-migrated database so the app works before Supabase is wired up.
 async function resolveComfortForProfile(profileId: string | null): Promise<ComfortModel> {
-  if (!profileId) return resolveComfort(null, null);
+  if (!profileId || !isSupabaseConfigured()) return resolveComfort(null, null);
   try {
     const supabase = await createClient();
     const {
@@ -74,13 +73,18 @@ async function resolveComfortForProfile(profileId: string | null): Promise<Comfo
     } = await supabase.auth.getUser();
     if (!user) return resolveComfort(null, null);
 
-    const { data } = await supabase
+    // Service_role read + ownership check (the RLS-bound client can't see `profiles`).
+    const admin = createAdminClient();
+    const { data: profile } = await admin
       .from('profiles')
-      .select('comfort_model')
+      .select('comfort_model, accounts!inner(user_id)')
       .eq('id', profileId)
       .maybeSingle();
 
-    const personal = (data?.comfort_model as ComfortModel | undefined) ?? null;
+    const account = profile?.accounts as unknown as { user_id: string } | undefined;
+    if (!profile || account?.user_id !== user.id) return resolveComfort(null, null);
+
+    const personal = (profile.comfort_model as ComfortModel | undefined) ?? null;
     return resolveComfort(personal, null);
   } catch {
     return resolveComfort(null, null);

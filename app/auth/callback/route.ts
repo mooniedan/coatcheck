@@ -6,7 +6,10 @@ import { isSupabaseConfigured } from '@/lib/supabase/env';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+  // Only allow same-origin relative paths. Reject protocol-relative (`//host`) and any value
+  // not starting with a single `/`, so `next` can't be used to redirect off-site.
+  const rawNext = searchParams.get('next');
+  const next = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
 
   if (code && isSupabaseConfigured()) {
     const supabase = await createClient();

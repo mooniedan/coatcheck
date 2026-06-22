@@ -111,24 +111,86 @@ function currentToSnapshot(c: CurrentBlock): WeatherSnapshot {
   };
 }
 
+/** A daily precip probability at/above which we advise rain gear even if the representative
+ * weather code isn't itself a rain code (a single daily code under-reports shower risk). */
+const DAILY_RAIN_PROB = 50;
+
 function dailyToForecast(d: DailyBlock): DailyForecast[] {
-  return d.time.map((date, i) => {
-    const code = d.weather_code[i];
-    return {
-      date,
-      tempMaxC: d.temperature_2m_max[i],
-      tempMinC: d.temperature_2m_min[i],
-      feelsLikeMaxC: d.apparent_temperature_max[i],
-      feelsLikeMinC: d.apparent_temperature_min[i],
-      precipProb: d.precipitation_probability_max[i] ?? 0,
-      windMaxKph: d.wind_speed_10m_max[i],
-      weatherCode: code,
-      description: describeWeatherCode(code),
-      isRaining: RAIN_CODES.has(code),
-      // Daytime high is the "what to wear" signal for a whole-day glance.
-      feelsLikeC: d.apparent_temperature_max[i],
-    };
-  });
+  return d.time
+    .map((date, i): DailyForecast | null => {
+      const code = d.weather_code[i];
+      const tempMaxC = d.temperature_2m_max[i];
+      const tempMinC = d.temperature_2m_min[i];
+      const feelsLikeMaxC = d.apparent_temperature_max[i];
+      const feelsLikeMinC = d.apparent_temperature_min[i];
+      const windMaxKph = d.wind_speed_10m_max[i];
+      // Open-Meteo returns aligned parallel arrays; if a block is short/missing, the indexed
+      // value is undefined and would flow through as NaN (→ silently empty outfit). Drop the
+      // day instead so the strip omits it rather than showing a broken cell.
+      if (
+        ![tempMaxC, tempMinC, feelsLikeMaxC, feelsLikeMinC, windMaxKph, code].every(
+          Number.isFinite
+        )
+      ) {
+        return null;
+      }
+      const precipProb = d.precipitation_probability_max[i] ?? 0;
+      return {
+        date,
+        tempMaxC,
+        tempMinC,
+        feelsLikeMaxC,
+        feelsLikeMinC,
+        precipProb,
+        windMaxKph,
+        weatherCode: code,
+        description: describeWeatherCode(code),
+        // A representative daily code can read "Overcast" on a day with high shower probability,
+        // so fall back to the precip probability — otherwise the figure carries no umbrella on a
+        // day whose own strip cell shows e.g. 80%.
+        isRaining: RAIN_CODES.has(code) || precipProb >= DAILY_RAIN_PROB,
+        // Daytime high is the "what to wear" signal for a whole-day glance.
+        feelsLikeC: feelsLikeMaxC,
+      };
+    })
+    .filter((day): day is DailyForecast => day !== null);
+}
+
+export type LocationQueryError = { error: string; status: number };
+
+/**
+ * Resolve a request's `q` / `lat` / `lng` params to a location, with validation. Coordinates
+ * must be finite and in range; `q` is length-capped before hitting the geocoder. Returns the
+ * resolved location or a `{ error, status }` the caller can hand straight to NextResponse.
+ * Shared by the weather and recommendations routes so the branch + validation live in one place.
+ */
+export async function resolveLocationFromQuery(
+  q: string | null,
+  lat: string | null,
+  lng: string | null
+): Promise<ResolvedLocation | LocationQueryError> {
+  if (lat && lng) {
+    const latN = Number(lat);
+    const lngN = Number(lng);
+    if (
+      !Number.isFinite(latN) ||
+      !Number.isFinite(lngN) ||
+      latN < -90 ||
+      latN > 90 ||
+      lngN < -180 ||
+      lngN > 180
+    ) {
+      return { error: 'Invalid coordinates', status: 400 };
+    }
+    return { name: 'Your location', latitude: latN, longitude: lngN };
+  }
+  if (q) {
+    if (q.length > 120) return { error: 'Query too long', status: 400 };
+    const location = await geocode(q);
+    if (!location) return { error: 'Location not found', status: 404 };
+    return location;
+  }
+  return { error: 'Provide q or lat/lng', status: 400 };
 }
 
 /** Current conditions for a coordinate. Cached for 30 minutes per location. */

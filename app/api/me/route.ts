@@ -79,13 +79,14 @@ export async function GET() {
       profiles: profiles ?? [],
     });
   } catch (err) {
-    // Database not migrated yet — return the user so the UI still renders.
-    const message = err instanceof Error ? err.message : 'Account lookup failed';
+    // Database not migrated yet — return the user so the UI still renders. Log detail
+    // server-side; surface only a generic warning (no schema/internal detail to the client).
+    console.error('GET /api/me account lookup failed:', err);
     return NextResponse.json({
       user: { id: user.id, email: user.email },
       account: null,
       profiles: [],
-      warning: message,
+      warning: 'Account lookup failed',
     });
   }
 }
