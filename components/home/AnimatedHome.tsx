@@ -40,12 +40,15 @@ type Phase = 'tour' | 'rest' | 'scrub';
 export default function AnimatedHome({
   location,
   rec,
+  isToday = true,
   signedIn,
   onFeedback,
   feedbackMsg,
 }: {
   location: ResolvedLocation;
   rec: Recommendation;
+  /** False when a future forecast day is being previewed — feedback is for today only. */
+  isToday?: boolean;
   signedIn: boolean;
   onFeedback: (v: Verdict, wornItemIds?: string[]) => void;
   feedbackMsg: string | null;
@@ -136,6 +139,9 @@ export default function AnimatedHome({
   // manual scrub stay on the illustrative day-model curves.
   const sceneWeather = phase === 'rest' ? sceneWeatherFromSnapshot(rec.weather) : undefined;
   const sceneOutfit = phase === 'rest' ? outfitFromRecommendation(rec) : undefined;
+
+  // Feedback is about what you actually wore today, so it's only live on today's view.
+  const feedbackEnabled = signedIn && isToday;
 
   const items: ClothingItem[] = CATEGORIES.flatMap((c) => rec.itemsByCategory[c] ?? []);
 
@@ -238,8 +244,8 @@ export default function AnimatedHome({
           <span className="text-xs text-on-surface-variant">{rec.weather.description}</span>
         </div>
         <Timeline t={t} prominent={controls} onScrub={onScrub} />
-        <FeedbackRow onFeedback={handleVerdict} disabled={!signedIn} active={comfortFor} />
-        {signedIn && comfortFor ? (
+        <FeedbackRow onFeedback={handleVerdict} disabled={!feedbackEnabled} active={comfortFor} />
+        {feedbackEnabled && comfortFor ? (
           <ComfortPicker
             verdict={comfortFor}
             worn={worn}
@@ -257,6 +263,10 @@ export default function AnimatedHome({
           />
         ) : !signedIn ? (
           <p className="px-5 pb-4 text-sm text-on-surface-variant">Sign in to add feedback.</p>
+        ) : !isToday ? (
+          <p className="px-5 pb-4 text-sm text-on-surface-variant">
+            Feedback applies to today&apos;s outfit.
+          </p>
         ) : feedbackMsg ? (
           <p className="px-5 pb-4 text-sm text-on-surface-variant">{feedbackMsg}</p>
         ) : null}

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geocode, getWeather } from '@/lib/weather';
+import { geocode, getForecast } from '@/lib/weather';
 import { recommend } from '@/lib/recommend';
 import { DEFAULT_CATALOG } from '@/lib/catalog';
 import { resolveComfort } from '@/lib/thresholds';
 import { createClient } from '@/lib/supabase/server';
-import type { ComfortModel } from '@/lib/types';
+import type { ComfortModel, DailyForecast, DayRecommendation, WeatherSnapshot } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
@@ -29,15 +29,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Provide q or lat/lng' }, { status: 400 });
     }
 
-    const weather = await getWeather(location.latitude, location.longitude);
+    const { current, week } = await getForecast(location.latitude, location.longitude);
     const comfort = await resolveComfortForProfile(profileId);
-    const recommendation = recommend(weather, DEFAULT_CATALOG, comfort);
+    const recommendation = recommend(current, DEFAULT_CATALOG, comfort);
 
-    return NextResponse.json({ location, recommendation });
+    // Precompute a recommendation per forecast day so tapping a day is a client-only swap.
+    const weekRecommendations: DayRecommendation[] = week.map((day) => ({
+      day,
+      recommendation: recommend(dayToSnapshot(day), DEFAULT_CATALOG, comfort),
+    }));
+
+    return NextResponse.json({ location, recommendation, week: weekRecommendations });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Recommendation failed';
     return NextResponse.json({ error: message }, { status: 502 });
   }
+}
+
+// Synthesize a WeatherSnapshot from a day's summary so the pure engine (and the scene
+// overrides, which read recommendation.weather) can run against a future day. Humidity is
+// not in the daily block; it doesn't affect the recommendation so 0 is fine.
+function dayToSnapshot(d: DailyForecast): WeatherSnapshot {
+  return {
+    feelsLikeC: d.feelsLikeC,
+    tempC: d.tempMaxC,
+    humidity: 0,
+    windKph: d.windMaxKph,
+    precipitationProbability: d.precipProb,
+    isRaining: d.isRaining,
+    weatherCode: d.weatherCode,
+    description: d.description,
+    observedAt: d.date,
+  };
 }
 
 // Loads the profile's learned comfort model when signed in; falls back to generic.

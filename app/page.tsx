@@ -4,8 +4,15 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import SignInButton from '@/components/SignInButton';
 import AnimatedHome from '@/components/home/AnimatedHome';
+import WeekStrip from '@/components/home/WeekStrip';
 import { Icon } from '@/components/ui/Icon';
-import type { Category, Recommendation, ResolvedLocation, Verdict } from '@/lib/types';
+import type {
+  Category,
+  DayRecommendation,
+  Recommendation,
+  ResolvedLocation,
+  Verdict,
+} from '@/lib/types';
 
 const CATEGORIES: Category[] = ['Tops', 'Bottoms', 'Outerwear', 'Accessories'];
 
@@ -19,6 +26,8 @@ export default function Home() {
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [rec, setRec] = useState<Recommendation | null>(null);
+  const [week, setWeek] = useState<DayRecommendation[]>([]);
+  const [selectedDay, setSelectedDay] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,9 +59,12 @@ export default function Home() {
         if (!res.ok) throw new Error(data.error ?? 'Something went wrong');
         setLocation(data.location);
         setRec(data.recommendation);
+        setWeek(data.week ?? []);
+        setSelectedDay(0);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load');
         setRec(null);
+        setWeek([]);
       } finally {
         setLoading(false);
       }
@@ -177,13 +189,19 @@ export default function Home() {
       )}
 
       {rec && location && !loading && (
-        <AnimatedHome
-          location={location}
-          rec={rec}
-          signedIn={signedIn}
-          onFeedback={sendFeedback}
-          feedbackMsg={feedbackMsg}
-        />
+        <div className="flex flex-col gap-3">
+          {week.length > 0 && (
+            <WeekStrip week={week} selectedIndex={selectedDay} onSelect={setSelectedDay} />
+          )}
+          <AnimatedHome
+            location={location}
+            rec={selectedDay === 0 ? rec : (week[selectedDay]?.recommendation ?? rec)}
+            isToday={selectedDay === 0}
+            signedIn={signedIn}
+            onFeedback={sendFeedback}
+            feedbackMsg={feedbackMsg}
+          />
+        </div>
       )}
     </main>
   );

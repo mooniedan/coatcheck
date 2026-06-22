@@ -57,3 +57,32 @@ export interface Recommendation {
   weather: WeatherSnapshot;
   itemsByCategory: Record<Category, ClothingItem[]>;
 }
+
+/** One day of the forecast strip. Derived from Open-Meteo's `daily` block. */
+export interface DailyForecast {
+  /** ISO date (YYYY-MM-DD), local to the location. */
+  date: string;
+  tempMaxC: number;
+  tempMinC: number;
+  feelsLikeMaxC: number;
+  feelsLikeMinC: number;
+  /** Max precipitation probability across the day (%). */
+  precipProb: number;
+  /** Max wind across the day (kph). */
+  windMaxKph: number;
+  weatherCode: number;
+  description: string;
+  /** Whether the day's weather code denotes rain/showers/storm. */
+  isRaining: boolean;
+  /**
+   * Representative "what to wear" feels-like for the day — the daytime high
+   * (apparent_temperature_max). Used to run the recommendation engine per day.
+   */
+  feelsLikeC: number;
+}
+
+/** A day paired with its precomputed clothing recommendation. */
+export interface DayRecommendation {
+  day: DailyForecast;
+  recommendation: Recommendation;
+}
