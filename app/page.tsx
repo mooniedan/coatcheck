@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import SignInButton from '@/components/SignInButton';
 import AnimatedHome from '@/components/home/AnimatedHome';
@@ -31,6 +31,15 @@ export default function Home() {
   const [activeProfile, setActiveProfile] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState(false);
+
+  // When a new location's results load, scroll the forecast strip to the top of the viewport
+  // so the 7-day strip + animated card are immediately in view (esp. on mobile).
+  const resultsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (rec && location && !loading) {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [rec, location, loading]);
 
   useEffect(() => {
     fetch('/api/me')
@@ -187,7 +196,7 @@ export default function Home() {
       )}
 
       {rec && location && !loading && (
-        <div className="flex flex-col gap-3">
+        <div ref={resultsRef} className="flex scroll-mt-4 flex-col gap-3">
           {week.length > 0 && (
             <WeekStrip week={week} selectedIndex={selectedDay} onSelect={setSelectedDay} />
           )}

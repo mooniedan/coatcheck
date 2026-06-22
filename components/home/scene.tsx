@@ -694,15 +694,33 @@ export function Timeline({
   return (
     <div
       ref={ref}
-      onMouseDown={(e) => {
+      data-testid="day-timeline"
+      // Pointer events unify mouse, touch and pen. Pointer capture keeps the drag tracking even
+      // when the finger leaves the strip; `touchAction: 'none'` stops the browser from claiming
+      // the gesture for page scrolling so the slider can actually be dragged on mobile.
+      onPointerDown={(e) => {
+        if (!onScrub) return;
+        const el = ref.current;
+        try {
+          el?.setPointerCapture(e.pointerId);
+        } catch {
+          // Some browsers throw if the pointer isn't active; capture is best-effort.
+        }
         scrub(e.clientX);
-        const move = (ev: MouseEvent) => scrub(ev.clientX);
-        const up = () => {
-          window.removeEventListener('mousemove', move);
-          window.removeEventListener('mouseup', up);
+        const move = (ev: PointerEvent) => scrub(ev.clientX);
+        const up = (ev: PointerEvent) => {
+          try {
+            el?.releasePointerCapture(ev.pointerId);
+          } catch {
+            /* no-op */
+          }
+          el?.removeEventListener('pointermove', move);
+          el?.removeEventListener('pointerup', up);
+          el?.removeEventListener('pointercancel', up);
         };
-        window.addEventListener('mousemove', move);
-        window.addEventListener('mouseup', up);
+        el?.addEventListener('pointermove', move);
+        el?.addEventListener('pointerup', up);
+        el?.addEventListener('pointercancel', up);
       }}
       style={{
         position: 'relative',
@@ -710,6 +728,8 @@ export function Timeline({
         padding: '0 16px',
         transition: 'height 0.25s ease',
         cursor: onScrub ? 'pointer' : 'default',
+        touchAction: 'none',
+        userSelect: 'none',
       }}
     >
       <div

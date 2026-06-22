@@ -9,7 +9,10 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // Retry once locally too: the dev server compiles routes on first hit, so a cold parallel
+  // run can transiently time out. Cap workers so we don't hammer the dev server at once.
+  retries: process.env.CI ? 2 : 1,
+  workers: process.env.CI ? 1 : 4,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: 'http://localhost:1013',
