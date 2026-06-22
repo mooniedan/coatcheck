@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   currentToSnapshot,
   dailyToForecast,
+  hourlyByDate,
   resolveLocationFromQuery,
   type CurrentBlock,
   type DailyBlock,
+  type HourlyBlock,
 } from './weather';
 
 function current(over: Partial<CurrentBlock>): CurrentBlock {
@@ -48,6 +50,8 @@ function daily(over: Partial<DailyBlock>): DailyBlock {
     precipitation_probability_max: [10],
     wind_speed_10m_max: [15],
     weather_code: [3],
+    sunrise: ['2026-06-22T04:30'],
+    sunset: ['2026-06-22T22:00'],
     ...over,
   };
 }
@@ -84,6 +88,32 @@ describe('dailyToForecast', () => {
     );
     expect(out).toHaveLength(1);
     expect(out[0].date).toBe('2026-06-22');
+  });
+});
+
+describe('hourlyByDate', () => {
+  const block: HourlyBlock = {
+    time: ['2026-06-22T00:00', '2026-06-22T13:00', '2026-06-23T06:00'],
+    temperature_2m: [10, 18, 12],
+    apparent_temperature: [9, 17, 11],
+    precipitation: [0, 0.5, 0],
+    precipitation_probability: [5, 70, 20],
+    weather_code: [0, 61, 3],
+    wind_speed_10m: [8, 12, 6],
+  };
+
+  it('buckets hours by local date', () => {
+    const m = hourlyByDate(block);
+    expect(m.get('2026-06-22')).toHaveLength(2);
+    expect(m.get('2026-06-23')).toHaveLength(1);
+  });
+  it('parses the local hour and derives isRaining', () => {
+    const day = hourlyByDate(block).get('2026-06-22')!;
+    expect(day[0].hour).toBe(0);
+    expect(day[1].hour).toBe(13);
+    expect(day[1].isRaining).toBe(true); // precipitation > 0
+    expect(day[0].isRaining).toBe(false);
+    expect(day[1].feelsLikeC).toBe(17);
   });
 });
 

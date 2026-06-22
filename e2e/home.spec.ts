@@ -55,9 +55,8 @@ test.describe('home', () => {
     await expect(page.getByText(/not found/i)).toBeVisible();
   });
 
-  test('timeline scrubs via a drag (pointer/touch path)', async ({ page }) => {
+  test('timeline scrubs the day in whole-hour steps (pointer/touch path)', async ({ page }) => {
     await search(page, 'Oslo');
-    // Let the intro tour settle so the clock shows the resting time, then drag the slider.
     await expect(page.getByText('FEELS LIKE')).toBeVisible();
 
     const timeline = page.getByTestId('day-timeline');
@@ -68,19 +67,32 @@ test.describe('home', () => {
     expect(box).not.toBeNull();
     const y = box!.y + box!.height / 2;
 
-    // Drag past the left edge → clamps to t=0 → clock reads the start of the day (06:00).
-    await page.mouse.move(box!.x + box!.width / 2, y);
-    await page.mouse.down();
-    await page.mouse.move(box!.x - 20, y, { steps: 8 });
-    await page.mouse.up();
-    await expect(page.getByText('06:00')).toBeVisible();
+    // Reads the hero clock (top-right HH:00).
+    const clock = () =>
+      page.evaluate(() => {
+        const el = [...document.querySelectorAll('div')].find(
+          (d) => d.children.length === 0 && /^\d{2}:\d{2}$/.test(d.textContent!.trim())
+        );
+        return el?.textContent?.trim() ?? '';
+      });
 
-    // Drag past the right edge → clamps to t=1 → end of the day (21:00).
-    await page.mouse.move(box!.x + box!.width / 2, y);
-    await page.mouse.down();
-    await page.mouse.move(box!.x + box!.width + 20, y, { steps: 8 });
-    await page.mouse.up();
-    await expect(page.getByText('21:00')).toBeVisible();
+    const dragTo = async (frac: number) => {
+      await page.mouse.move(box!.x + box!.width / 2, y);
+      await page.mouse.down();
+      await page.mouse.move(box!.x + box!.width * frac, y, { steps: 8 });
+      await page.mouse.up();
+    };
+
+    // Drag near the start, then near the end: both land on a whole hour (HH:00) and differ,
+    // proving the slider scrubs real hourly steps (the window is the day's sunrise→sunset).
+    await dragTo(0.02);
+    const early = await clock();
+    expect(early).toMatch(/^\d{2}:00$/);
+
+    await dragTo(0.98);
+    const late = await clock();
+    expect(late).toMatch(/^\d{2}:00$/);
+    expect(late).not.toBe(early);
   });
 
   test('results scroll into view after a search', async ({ page }) => {

@@ -1,6 +1,6 @@
 import 'server-only';
 import { describeWeatherCode, isRainyCode } from './wmo';
-import type { DailyForecast, ResolvedLocation, WeatherSnapshot } from './types';
+import type { DailyForecast, HourForecast, ResolvedLocation, WeatherSnapshot } from './types';
 
 // Server-side Open-Meteo adapter. Free, no API key for non-commercial/dev use. Kept behind
 // this stable interface so the provider can be swapped without touching routes or clients.
@@ -56,12 +56,25 @@ export interface DailyBlock {
   precipitation_probability_max: number[];
   wind_speed_10m_max: number[];
   weather_code: number[];
+  sunrise: string[];
+  sunset: string[];
+}
+export interface HourlyBlock {
+  time: string[];
+  temperature_2m: number[];
+  apparent_temperature: number[];
+  precipitation: number[];
+  precipitation_probability: number[];
+  weather_code: number[];
+  wind_speed_10m: number[];
 }
 
 const CURRENT_FIELDS =
   'temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m';
 const DAILY_FIELDS =
-  'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,wind_speed_10m_max,weather_code';
+  'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,wind_speed_10m_max,weather_code,sunrise,sunset';
+const HOURLY_FIELDS =
+  'temperature_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m';
 
 export function currentToSnapshot(c: CurrentBlock): WeatherSnapshot {
   return {
@@ -81,7 +94,39 @@ export function currentToSnapshot(c: CurrentBlock): WeatherSnapshot {
  * weather code isn't itself a rain code (a single daily code under-reports shower risk). */
 const DAILY_RAIN_PROB = 50;
 
-export function dailyToForecast(d: DailyBlock): DailyForecast[] {
+// Bucket the flat hourly arrays into HourForecast[] keyed by local date (YYYY-MM-DD).
+export function hourlyByDate(h: HourlyBlock): Map<string, HourForecast[]> {
+  const byDate = new Map<string, HourForecast[]>();
+  h.time.forEach((time, i) => {
+    const code = h.weather_code[i];
+    const feelsLikeC = h.apparent_temperature[i];
+    const tempC = h.temperature_2m[i];
+    const windKph = h.wind_speed_10m[i];
+    if (![feelsLikeC, tempC, windKph, code].every(Number.isFinite)) return;
+    const date = time.slice(0, 10);
+    const hour = Number(time.slice(11, 13));
+    const precipProb = h.precipitation_probability[i] ?? 0;
+    const entry: HourForecast = {
+      time,
+      hour,
+      feelsLikeC,
+      tempC,
+      weatherCode: code,
+      isRaining: (h.precipitation[i] ?? 0) > 0 || isRainyCode(code),
+      precipProb,
+      windKph,
+    };
+    const list = byDate.get(date);
+    if (list) list.push(entry);
+    else byDate.set(date, [entry]);
+  });
+  return byDate;
+}
+
+export function dailyToForecast(
+  d: DailyBlock,
+  hoursByDate: Map<string, HourForecast[]> = new Map()
+): DailyForecast[] {
   return d.time
     .map((date, i): DailyForecast | null => {
       const code = d.weather_code[i];
@@ -117,6 +162,9 @@ export function dailyToForecast(d: DailyBlock): DailyForecast[] {
         isRaining: isRainyCode(code) || precipProb >= DAILY_RAIN_PROB,
         // Daytime high is the "what to wear" signal for a whole-day glance.
         feelsLikeC: feelsLikeMaxC,
+        sunrise: d.sunrise?.[i] ?? '',
+        sunset: d.sunset?.[i] ?? '',
+        hours: hoursByDate.get(date) ?? [],
       };
     })
     .filter((day): day is DailyForecast => day !== null);
@@ -188,12 +236,21 @@ export async function getForecast(
     longitude: String(longitude),
     current: CURRENT_FIELDS,
     daily: DAILY_FIELDS,
+    hourly: HOURLY_FIELDS,
     forecast_days: '7',
     wind_speed_unit: 'kmh',
     timezone: 'auto',
   });
   const res = await fetch(`${FORECAST_URL}?${params}`, { next: { revalidate: 1_800 } });
   if (!res.ok) throw new Error(`Forecast fetch failed: ${res.status}`);
-  const data = (await res.json()) as { current: CurrentBlock; daily: DailyBlock };
-  return { current: currentToSnapshot(data.current), week: dailyToForecast(data.daily) };
+  const data = (await res.json()) as {
+    current: CurrentBlock;
+    daily: DailyBlock;
+    hourly: HourlyBlock;
+  };
+  const hoursByDate = hourlyByDate(data.hourly);
+  return {
+    current: currentToSnapshot(data.current),
+    week: dailyToForecast(data.daily, hoursByDate),
+  };
 }

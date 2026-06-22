@@ -147,6 +147,30 @@ export function tempAt(t: number) {
   return Math.round(sampleNum(TEMP, t));
 }
 
+// ── Hour ↔ slider mapping (real, data-backed day) ──────────────
+// Parse the local hour-of-day (fractional) from an ISO "YYYY-MM-DDTHH:MM" timestamp.
+export function parseLocalHour(iso: string): number {
+  if (!iso || iso.length < 16) return NaN;
+  return Number(iso.slice(11, 13)) + Number(iso.slice(14, 16)) / 60;
+}
+
+// Map a clock hour (0–23) onto the sky model's t (06:00→21:00 ⇒ 0→1), clamped. Lets the real
+// selected hour drive the dawn/day/dusk visuals.
+export function hourToSkyT(hour: number): number {
+  return clamp((hour - HOUR_START) / (HOUR_END - HOUR_START), 0, 1);
+}
+
+// The slider's hour window for a day, anchored to real sunrise/sunset (whole hours). Falls
+// back to the canned 06:00–21:00 band when sun times are missing.
+export function dayWindow(sunrise: string, sunset: string): { start: number; end: number } {
+  const s = parseLocalHour(sunrise);
+  const e = parseLocalHour(sunset);
+  if (!Number.isFinite(s) || !Number.isFinite(e)) return { start: HOUR_START, end: HOUR_END };
+  const start = clamp(Math.floor(s), 0, 23);
+  const end = clamp(Math.ceil(e), start + 1, 23);
+  return { start, end };
+}
+
 // ── Real-weather overrides ─────────────────────────────────────
 // For the resting state we derive the scene from the live snapshot + the actual recommendation,
 // so the painted weather and the figure's layers match what the user is being told.

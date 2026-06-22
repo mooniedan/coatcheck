@@ -23,6 +23,7 @@ export default function Home() {
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [rec, setRec] = useState<Recommendation | null>(null);
   const [week, setWeek] = useState<DayRecommendation[]>([]);
+  const [comfortOffsetC, setComfortOffsetC] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function Home() {
         setLocation(data.location);
         setRec(data.recommendation);
         setWeek(data.week ?? []);
+        setComfortOffsetC(data.comfortOffsetC ?? 0);
         setSelectedDay(0);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load');
@@ -203,6 +205,8 @@ export default function Home() {
           <AnimatedHome
             location={location}
             rec={selectedDay === 0 ? rec : (week[selectedDay]?.recommendation ?? rec)}
+            day={week[selectedDay]?.day ?? null}
+            comfortOffsetC={comfortOffsetC}
             isToday={selectedDay === 0}
             signedIn={signedIn}
             onFeedback={sendFeedback}

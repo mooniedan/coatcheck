@@ -9,6 +9,9 @@ import {
   tempAt,
   sceneWeatherFromSnapshot,
   outfitFromRecommendation,
+  parseLocalHour,
+  hourToSkyT,
+  dayWindow,
 } from './scene-model';
 import type { Category, ClothingItem, Recommendation, WeatherSnapshot } from './types';
 
@@ -81,6 +84,28 @@ describe('day model', () => {
     const noon = outfitAt(0.6);
     expect(noon.shell).toBe(0); // warm midday → shell off
     expect(noon.sunglasses).toBeGreaterThan(0);
+  });
+});
+
+describe('hour ↔ slider mapping', () => {
+  it('parseLocalHour reads fractional local hour', () => {
+    expect(parseLocalHour('2026-06-22T03:54')).toBeCloseTo(3.9, 2);
+    expect(parseLocalHour('2026-06-22T13:00')).toBe(13);
+    expect(Number.isNaN(parseLocalHour(''))).toBe(true);
+  });
+  it('hourToSkyT maps the day onto 0..1, clamped outside 06–21', () => {
+    expect(hourToSkyT(6)).toBe(0);
+    expect(hourToSkyT(21)).toBe(1);
+    expect(hourToSkyT(3)).toBe(0); // pre-06:00 clamps to 0
+    expect(hourToSkyT(23)).toBe(1); // post-21:00 clamps to 1
+    expect(hourToSkyT(13.5)).toBeCloseTo(0.5, 2);
+  });
+  it('dayWindow anchors to whole-hour sunrise/sunset', () => {
+    expect(dayWindow('2026-06-22T03:54', '2026-06-22T22:43')).toEqual({ start: 3, end: 23 });
+    expect(dayWindow('2026-12-22T09:10', '2026-12-22T15:50')).toEqual({ start: 9, end: 16 });
+  });
+  it('dayWindow falls back to 06–21 when sun times are missing', () => {
+    expect(dayWindow('', '')).toEqual({ start: 6, end: 21 });
   });
 });
 

@@ -5,32 +5,73 @@
 // time with the real feels-like temperature; tap the figure to explode the real recommended
 // outfit; tap the scene to reveal a scrubable timeline.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { HeroScene, FeelsBadge, Timeline } from './scene';
 import {
-  HeroScene,
-  FeelsBadge,
-  Timeline,
   clamp,
   HOUR_START,
   HOUR_END,
   sceneWeatherFromSnapshot,
   outfitFromRecommendation,
-} from './scene';
+  hourToSkyT,
+  dayWindow,
+} from '@/lib/scene-model';
+import { recommend } from '@/lib/recommend';
+import { describeWeatherCode } from '@/lib/wmo';
 import { Icon } from '@/components/ui/Icon';
 import { getItemIcon } from '@/lib/itemIcons';
 import { DEFAULT_CATALOG } from '@/lib/catalog';
 import { CATEGORIES } from '@/lib/types';
-import type { ClothingItem, Recommendation, ResolvedLocation, Verdict } from '@/lib/types';
+import type {
+  ClothingItem,
+  DailyForecast,
+  Recommendation,
+  ResolvedLocation,
+  Verdict,
+  WeatherSnapshot,
+} from '@/lib/types';
 
-// Browser local time → t (06:00→21:00 maps onto 0..1), clamped.
-function nowToT() {
-  const d = new Date();
-  const h = d.getHours() + d.getMinutes() / 60;
-  return clamp((h - HOUR_START) / (HOUR_END - HOUR_START), 0, 1);
-}
+const pad = (n: number) => String(n).padStart(2, '0');
+
+// Fallback clock (only used when no hourly data is available).
 function nowClock() {
   const d = new Date();
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// The slider's hour window for a day, anchored to real sunrise/sunset.
+function windowFor(day: DailyForecast | null) {
+  const win = day ? dayWindow(day.sunrise, day.sunset) : { start: HOUR_START, end: HOUR_END };
+  return { ...win, span: Math.max(1, win.end - win.start) };
+}
+
+// Slider position (0..1) → the whole hour it points at, within the window.
+function hourAt(t: number, win: { start: number; end: number; span: number }) {
+  return clamp(Math.round(win.start + t * win.span), win.start, win.end);
+}
+
+// Where the slider should rest when a day loads: the current hour for today, else the warmest
+// hour of the day (the "what to wear" peak). Returns a slider position (0..1).
+function defaultPosition(day: DailyForecast | null, isToday: boolean): number {
+  const win = windowFor(day);
+  let hour: number;
+  if (isToday) {
+    hour = new Date().getHours();
+  } else if (day && day.hours.length) {
+    let best = win.start;
+    let bestFeels = -Infinity;
+    for (const h of day.hours) {
+      if (h.hour < win.start || h.hour > win.end) continue;
+      if (h.feelsLikeC > bestFeels) {
+        bestFeels = h.feelsLikeC;
+        best = h.hour;
+      }
+    }
+    hour = best;
+  } else {
+    hour = 12;
+  }
+  return (clamp(hour, win.start, win.end) - win.start) / win.span;
 }
 
 type Phase = 'tour' | 'rest' | 'scrub';
@@ -38,6 +79,8 @@ type Phase = 'tour' | 'rest' | 'scrub';
 export default function AnimatedHome({
   location,
   rec,
+  day = null,
+  comfortOffsetC = 0,
   isToday = true,
   signedIn,
   onFeedback,
@@ -45,6 +88,10 @@ export default function AnimatedHome({
 }: {
   location: ResolvedLocation;
   rec: Recommendation;
+  /** The selected day's hour-by-hour forecast (drives the scrubbable scene). */
+  day?: DailyForecast | null;
+  /** The wearer's comfort offset, so per-hour outfits recompute client-side as you scrub. */
+  comfortOffsetC?: number;
   /** False when a future forecast day is being previewed — feedback is for today only. */
   isToday?: boolean;
   signedIn: boolean;
@@ -87,11 +134,11 @@ export default function AnimatedHome({
     );
   }, []);
 
-  // Auto-play tour: 0→1 over 6s, then settle to the real local time.
+  // Auto-play tour: sweep the day window 0→1 over 6s, then settle to the resting hour.
   useEffect(() => {
     if (phase !== 'tour') return;
     if (reduced) {
-      setT(nowToT());
+      setT(defaultPosition(day, isToday));
       setPhase('rest');
       return;
     }
@@ -103,12 +150,21 @@ export default function AnimatedHome({
         rafRef.current = requestAnimationFrame(step);
       } else {
         setPhase('rest');
-        setT(nowToT());
+        setT(defaultPosition(day, isToday));
       }
     };
     rafRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, reduced]);
+
+  // When the selected day changes (strip tap), settle the slider at that day's resting hour.
+  useEffect(() => {
+    if (phase === 'tour') return;
+    setT(defaultPosition(day, isToday));
+    setPhase('rest');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day?.date]);
 
   // Auto-fade controls 3s after the last interaction. `lastInteract` re-arms the timer; `t`
   // must NOT be a dep or it re-arms every animation frame while scrubbing.
@@ -130,26 +186,76 @@ export default function AnimatedHome({
     setControls(true);
     setLastInteract(Date.now());
   };
+  const win = windowFor(day);
+  const selectedHour = hourAt(t, win);
+
   const onScrub = (next: number) => {
-    setT(next);
+    // Snap to whole hours: the slider only lands on real hourly data points.
+    const hour = hourAt(next, win);
+    setT((hour - win.start) / win.span);
     setControls(true);
     setLastInteract(Date.now());
     setPhase('scrub');
   };
 
-  const walking = !reduced && phase === 'tour';
-  const restingTemp = phase === 'rest' ? Math.round(rec.weather.feelsLikeC) : undefined;
-  const clockLabel = phase === 'rest' ? nowClock() : undefined;
+  // Derive the selected hour's real weather + outfit (recomputed only when the hour changes).
+  // This drives the whole scene — tour, rest and scrub — whenever hourly data is available;
+  // otherwise we fall back to the day-level recommendation.
+  const hourView = useMemo(() => {
+    const hours = day?.hours ?? [];
+    if (hours.length === 0) return null;
+    const hd = hours.find((h) => h.hour === selectedHour) ?? hours[selectedHour];
+    if (!hd) return null;
+    const snapshot: WeatherSnapshot = {
+      feelsLikeC: hd.feelsLikeC,
+      tempC: hd.tempC,
+      humidity: 0,
+      windKph: hd.windKph,
+      precipitationProbability: hd.precipProb,
+      isRaining: hd.isRaining,
+      weatherCode: hd.weatherCode,
+      description: describeWeatherCode(hd.weatherCode),
+      observedAt: hd.time,
+    };
+    const hourRec = recommend(snapshot, DEFAULT_CATALOG, { offsetC: comfortOffsetC });
+    return {
+      weather: sceneWeatherFromSnapshot(snapshot),
+      outfit: outfitFromRecommendation(hourRec),
+      feels: Math.round(snapshot.feelsLikeC),
+      description: snapshot.description,
+      rec: hourRec,
+    };
+  }, [day?.date, day?.hours, selectedHour, comfortOffsetC]);
 
-  // Resting state paints the real weather + the actually-recommended outfit. The 6s tour and
-  // manual scrub stay on the illustrative day-model curves.
-  const sceneWeather = phase === 'rest' ? sceneWeatherFromSnapshot(rec.weather) : undefined;
-  const sceneOutfit = phase === 'rest' ? outfitFromRecommendation(rec) : undefined;
+  const useHour = hourView !== null;
+  const walking = !reduced && phase === 'tour';
+  // The figure/sky read the real selected hour when we have it; the slider position (t) stays
+  // in window space, so the sky is driven by hour-of-day, not the raw slider value.
+  const skyT = useHour ? hourToSkyT(selectedHour) : t;
+  const badgeTemp = useHour
+    ? hourView.feels
+    : phase === 'rest'
+      ? Math.round(rec.weather.feelsLikeC)
+      : undefined;
+  const clockLabel = useHour ? `${pad(selectedHour)}:00` : phase === 'rest' ? nowClock() : undefined;
+  const sceneWeather = useHour
+    ? hourView.weather
+    : phase === 'rest'
+      ? sceneWeatherFromSnapshot(rec.weather)
+      : undefined;
+  const sceneOutfit = useHour
+    ? hourView.outfit
+    : phase === 'rest'
+      ? outfitFromRecommendation(rec)
+      : undefined;
+  const description = useHour ? hourView.description : rec.weather.description;
 
   // Feedback is about what you actually wore today, so it's only live on today's view.
   const feedbackEnabled = signedIn && isToday;
 
-  const items: ClothingItem[] = CATEGORIES.flatMap((c) => rec.itemsByCategory[c] ?? []);
+  const items: ClothingItem[] = CATEGORIES.flatMap(
+    (c) => (useHour ? hourView.rec : rec).itemsByCategory[c] ?? []
+  );
 
   return (
     <div className="overflow-hidden rounded-[28px] border border-outline-variant bg-surface shadow-[var(--md-elev-2)]">
@@ -157,7 +263,7 @@ export default function AnimatedHome({
       <div className="relative" style={{ height: 'clamp(380px, 56vh, 520px)' }}>
         <div className="absolute inset-0">
           <HeroScene
-            t={t}
+            t={skyT}
             walking={walking && !exploded}
             onTap={onSceneTap}
             clockLabel={clockLabel}
@@ -165,7 +271,7 @@ export default function AnimatedHome({
             outfit={sceneOutfit}
             reduced={reduced}
           >
-            <FeelsBadge t={t} hidden={controls || exploded} overrideTemp={exploded ? undefined : restingTemp} />
+            <FeelsBadge t={skyT} hidden={exploded} overrideTemp={exploded ? undefined : badgeTemp} />
           </HeroScene>
         </div>
 
@@ -205,7 +311,7 @@ export default function AnimatedHome({
             {location.name}
             {location.admin1 ? `, ${location.admin1}` : ''}
           </span>
-          <span className="text-xs text-on-surface-variant">{rec.weather.description}</span>
+          <span className="text-xs text-on-surface-variant">{description}</span>
         </div>
         <Timeline t={t} prominent={controls} onScrub={onScrub} />
         <FeedbackRow onFeedback={handleVerdict} disabled={!feedbackEnabled} active={comfortFor} />

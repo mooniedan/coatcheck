@@ -61,6 +61,20 @@ export interface Recommendation {
   itemsByCategory: Record<Category, ClothingItem[]>;
 }
 
+/** One hour of the forecast. Derived from Open-Meteo's `hourly` block. */
+export interface HourForecast {
+  /** ISO local timestamp (YYYY-MM-DDTHH:00). */
+  time: string;
+  /** Local hour of day, 0–23. */
+  hour: number;
+  feelsLikeC: number;
+  tempC: number;
+  weatherCode: number;
+  isRaining: boolean;
+  precipProb: number;
+  windKph: number;
+}
+
 /** One day of the forecast strip. Derived from Open-Meteo's `daily` block. */
 export interface DailyForecast {
   /** ISO date (YYYY-MM-DD), local to the location. */
@@ -82,6 +96,11 @@ export interface DailyForecast {
    * (apparent_temperature_max). Used to run the recommendation engine per day.
    */
   feelsLikeC: number;
+  /** Local sunrise/sunset ISO timestamps for this day (anchors the hour slider). */
+  sunrise: string;
+  sunset: string;
+  /** Hour-by-hour forecast for this day (used to scrub the scene across the day). */
+  hours: HourForecast[];
 }
 
 /** A day paired with its precomputed clothing recommendation. */
@@ -122,6 +141,11 @@ export interface RecommendationsResponse {
   location: ResolvedLocation;
   recommendation: Recommendation;
   week: DayRecommendation[];
+  /**
+   * The wearer's resolved comfort offset (°C), so the client can recompute the per-hour
+   * outfit as the slider scrubs without a round-trip. Mirrors the offset the server used.
+   */
+  comfortOffsetC: number;
 }
 
 export interface ProfilesResponse {

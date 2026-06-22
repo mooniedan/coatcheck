@@ -36,7 +36,13 @@ export async function GET(request: NextRequest) {
       recommendation: recommend(dayToSnapshot(day), DEFAULT_CATALOG, comfort),
     }));
 
-    return NextResponse.json({ location, recommendation, week: weekRecommendations });
+    return NextResponse.json({
+      location,
+      recommendation,
+      week: weekRecommendations,
+      // The client recomputes the per-hour outfit as the slider scrubs, using this same offset.
+      comfortOffsetC: comfort.offsetC,
+    });
   } catch (err) {
     console.error('GET /api/recommendations failed:', err);
     return NextResponse.json({ error: 'Recommendation failed' }, { status: 502 });
