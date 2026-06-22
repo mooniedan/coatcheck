@@ -79,14 +79,12 @@ describe('day model', () => {
     expect(tempAt(0)).toBe(3);
     expect(tempAt(0.6)).toBe(18);
   });
-  it('outfitAt keeps essentials on and crossfades layers', () => {
-    const morning = outfitAt(0);
-    expect(morning.base).toBe(1);
-    expect(morning.bottoms).toBe(1);
-    expect(morning.shell).toBe(1); // cold morning → shell on
-    const noon = outfitAt(0.6);
-    expect(noon.shell).toBe(0); // warm midday → shell off
-    expect(noon.sunglasses).toBeGreaterThan(0);
+  it('outfitAt: cold morning wears outerwear, warm midday wears a top (and they differ)', () => {
+    const morning = outfitAt(0); // tempAt(0)=3°C, raining → cold
+    const noon = outfitAt(0.6); // tempAt(0.6)=18°C → warm
+    expect(morning.torso).not.toBeNull();
+    expect(morning.legs).not.toBeNull();
+    expect(morning.torso).not.toBe(noon.torso); // cold vs warm look different
   });
 });
 
@@ -199,39 +197,58 @@ describe('sceneWeatherFromSnapshot', () => {
   });
 });
 
-describe('outfitFromRecommendation', () => {
-  it('essentials always on', () => {
+describe('outfitFromRecommendation (worn outfit)', () => {
+  it('falls back to a tee + trousers when nothing is recommended', () => {
     const o = outfitFromRecommendation(rec([]));
-    expect(o.base).toBe(1);
-    expect(o.bottoms).toBe(1);
-    expect(o.footwear).toBe(1);
-    expect(o.shell).toBe(0);
-    expect(o.mid).toBe(0);
+    expect(o.torso).toBe('tshirt');
+    expect(o.legs).toBe('trousers');
+    expect(o.hiddenLayers).toBe(0);
+    expect(o.itemCount).toBe(0);
   });
-  it('mid on for a warm top layer; shell on for any outerwear', () => {
+
+  it('hot: tank + shorts + sunglasses, single layer', () => {
     const o = outfitFromRecommendation(
-      rec([item('sweater', 'Tops'), item('light_jacket', 'Outerwear')])
+      rec([item('tank', 'Tops'), item('shorts', 'Bottoms'), item('sunglasses', 'Accessories')])
     );
-    expect(o.mid).toBe(1);
-    expect(o.shell).toBe(1);
+    expect(o.torso).toBe('tank');
+    expect(o.legs).toBe('shorts');
+    expect(o.face).toBe('sunglasses');
+    expect(o.hiddenLayers).toBe(0);
+    expect(o.itemCount).toBe(3);
   });
-  it('accessories drive scarf/beanie/umbrella/sunglasses', () => {
+
+  it('outermost wins: outerwear shows over the top, which becomes a hidden layer', () => {
+    const o = outfitFromRecommendation(
+      rec([item('long_sleeve', 'Tops'), item('light_jacket', 'Outerwear'), item('trousers', 'Bottoms')])
+    );
+    expect(o.torso).toBe('light_jacket'); // jacket over the long-sleeve
+    expect(o.hiddenLayers).toBe(1); // the long-sleeve is hidden
+  });
+
+  it('cold: heavy coat wins; beanie/scarf/gloves on hands/head/neck', () => {
     const o = outfitFromRecommendation(
       rec([
-        item('scarf', 'Accessories'),
+        item('thermal_top', 'Tops'),
+        item('sweater', 'Tops'),
+        item('heavy_coat', 'Outerwear'),
+        item('trousers', 'Bottoms'),
         item('beanie', 'Accessories'),
-        item('umbrella', 'Accessories'),
-        item('sunglasses', 'Accessories'),
+        item('scarf', 'Accessories'),
+        item('gloves', 'Accessories'),
       ])
     );
-    expect(o.scarf).toBe(1);
-    expect(o.beanie).toBe(1);
-    expect(o.umbrella).toBe(1);
-    expect(o.sunglasses).toBe(1);
+    expect(o.torso).toBe('heavy_coat');
+    expect(o.head).toBe('beanie');
+    expect(o.neck).toBe('scarf');
+    expect(o.hands).toBe('gloves');
+    expect(o.hiddenLayers).toBe(2); // thermal + sweater hidden under the coat
   });
-  it('raincoat (outerwear) also raises the umbrella', () => {
-    const o = outfitFromRecommendation(rec([item('raincoat', 'Outerwear')]));
-    expect(o.umbrella).toBe(1);
-    expect(o.shell).toBe(1);
+
+  it('rain: raincoat is the torso garment; umbrella is held', () => {
+    const o = outfitFromRecommendation(
+      rec([item('tshirt', 'Tops'), item('raincoat', 'Outerwear'), item('umbrella', 'Accessories')])
+    );
+    expect(o.torso).toBe('raincoat');
+    expect(o.umbrella).toBe(true);
   });
 });

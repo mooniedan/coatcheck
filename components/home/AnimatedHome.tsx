@@ -309,6 +309,23 @@ export default function AnimatedHome({
           />
         )}
 
+        {/* Layer indicator — shown when the figure hides garments under the outermost; tapping
+            it explodes the outfit (same as tapping the figure). */}
+        {!exploded && sceneOutfit && sceneOutfit.hiddenLayers > 0 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setExploded(true);
+              setControls(false);
+            }}
+            aria-label={`${sceneOutfit.itemCount} items — show layers`}
+            className="absolute left-3 top-3 z-[6] inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-xs font-medium text-on-surface shadow-[var(--md-elev-1)] backdrop-blur transition-opacity hover:opacity-90"
+          >
+            <Icon name="swap" size={14} strokeWidth={2} />
+            {sceneOutfit.itemCount} layers
+          </button>
+        )}
+
         {exploded && <ExplodedOutfit items={items} onClose={() => setExploded(false)} />}
       </div>
 

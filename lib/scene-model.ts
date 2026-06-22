@@ -5,6 +5,8 @@
 // Open-Meteo snapshot + the actual recommendation.
 
 import { isSnowCode, rainIntensity, type RainIntensity } from './wmo';
+import { recommend } from './recommend';
+import { DEFAULT_CATALOG } from './catalog';
 import type { Recommendation, WeatherSnapshot } from './types';
 
 // ── Interpolation helpers ──────────────────────────────────────
@@ -112,22 +114,59 @@ export const CLOUDS: [number, number][] = [
   [1.0, 0.6],
 ];
 
-export type Outfit = Record<string, number>;
+// ── Worn outfit (recommendation → what the figure renders) ─────
+// The figure shows the single OUTERMOST garment per body region (a coat over a sweater shows the
+// coat); hidden layers surface in the exploded view + a layer indicator. Garment ids ARE the
+// catalog item ids (lib/catalog.ts). Pure + framework-free so native clients reuse it verbatim.
+export interface WornOutfit {
+  torso: string | null; // outerwear if any, else the warmest top
+  legs: string | null; // the most-covering recommended bottom
+  head: string | null; // 'beanie'
+  face: string | null; // 'sunglasses'
+  neck: string | null; // 'scarf'
+  hands: string | null; // 'gloves'
+  umbrella: boolean;
+  /** Recommended garments in a stacked region (tops+outerwear, bottoms) beyond the one drawn. */
+  hiddenLayers: number;
+  /** Total recommended items — the layer-indicator label / explode count. */
+  itemCount: number;
+}
 
-// Outfit layer visibility 0..1, keyed by t. Essentials always on; the rest crossfade.
-export function outfitAt(t: number): Outfit {
-  const midMorning = clamp(1 - (t - 0.42) * 10, 0, 1);
-  const midDusk = clamp((t - 0.78) * 6, 0, 1);
+// Outermost-wins priorities (first id present wins).
+const TORSO_OUTER = ['heavy_coat', 'raincoat', 'light_jacket', 'windbreaker'];
+const TORSO_TOP = ['thermal_top', 'sweater', 'long_sleeve', 'tshirt', 'tank']; // warmest → lightest
+const LEG_PRIORITY = ['trousers', 'thermal_leggings', 'shorts'];
+
+function firstPresent(order: string[], present: Set<string>): string | null {
+  for (const id of order) if (present.has(id)) return id;
+  return null;
+}
+
+// Map the actual recommendation → the single outermost garment per region.
+export function outfitFromRecommendation(rec: Recommendation): WornOutfit {
+  const byCat = rec.itemsByCategory;
+  const idsIn = (items?: { id: string }[]) => new Set((items ?? []).map((i) => i.id));
+  const tops = idsIn(byCat.Tops);
+  const bottoms = idsIn(byCat.Bottoms);
+  const outer = idsIn(byCat.Outerwear);
+  const acc = idsIn(byCat.Accessories);
+
+  const torso = firstPresent(TORSO_OUTER, outer) ?? firstPresent(TORSO_TOP, tops) ?? 'tshirt';
+  const legs = firstPresent(LEG_PRIORITY, bottoms) ?? 'trousers';
+
+  const hiddenLayers = Math.max(0, tops.size + outer.size - 1) + Math.max(0, bottoms.size - 1);
+  const itemCount = tops.size + bottoms.size + outer.size + acc.size;
+
   return {
-    base: 1,
-    mid: Math.max(midMorning, midDusk),
-    shell: clamp(1 - (t - 0.18) * 10, 0, 1),
-    bottoms: 1,
-    footwear: 1,
-    scarf: clamp(1 - (t - 0.3) * 8, 0, 1),
-    umbrella: clamp(1 - (t - 0.22) * 12, 0, 1),
-    beanie: clamp(1 - (t - 0.25) * 8, 0, 1),
-    sunglasses: clamp((t - 0.5) * 8, 0, 1) * clamp(1 - (t - 0.8) * 10, 0, 1),
+    torso,
+    legs,
+    head: acc.has('beanie') ? 'beanie' : null,
+    face: acc.has('sunglasses') ? 'sunglasses' : null,
+    neck: acc.has('scarf') ? 'scarf' : null,
+    hands: acc.has('gloves') ? 'gloves' : null,
+    umbrella: acc.has('umbrella'),
+    hiddenLayers,
+    itemCount,
   };
 }
 
@@ -145,6 +184,25 @@ export function celestialAt(t: number) {
 
 export function tempAt(t: number) {
   return Math.round(sampleNum(TEMP, t));
+}
+
+// Day-tour fallback (no hourly data): synthesize a recommendation from the canned temperature /
+// rain curves so the figure renders through the same path as the real, data-backed scene.
+export function outfitAt(t: number): WornOutfit {
+  const feelsLikeC = tempAt(t);
+  const isRaining = sampleNum(RAIN, t) > 0.35;
+  const snapshot: WeatherSnapshot = {
+    feelsLikeC,
+    tempC: feelsLikeC,
+    humidity: 60,
+    windKph: 6,
+    precipitationProbability: isRaining ? 80 : 10,
+    isRaining,
+    weatherCode: isRaining ? 61 : 1,
+    description: '',
+    observedAt: '',
+  };
+  return outfitFromRecommendation(recommend(snapshot, DEFAULT_CATALOG));
 }
 
 // ── Hour ↔ slider mapping (real, data-backed day) ──────────────
@@ -287,23 +345,4 @@ export function sceneWeatherFromSnapshot(w: WeatherSnapshot): SceneWeather {
   }
 
   return { rain, clouds, clearFactor };
-}
-
-// Map the actual recommendation → which figure layers are worn. Essentials (base/bottoms/
-// footwear) always on; the rest reflect the recommended items by id.
-export function outfitFromRecommendation(rec: Recommendation): Outfit {
-  const ids = new Set(Object.values(rec.itemsByCategory).flat().map((i) => i.id));
-  const has = (id: string) => ids.has(id);
-  const outerwear = rec.itemsByCategory.Outerwear ?? [];
-  return {
-    base: 1,
-    bottoms: 1,
-    footwear: 1,
-    mid: has('sweater') || has('thermal_top') ? 1 : 0,
-    shell: outerwear.length > 0 ? 1 : 0,
-    scarf: has('scarf') ? 1 : 0,
-    beanie: has('beanie') ? 1 : 0,
-    umbrella: has('umbrella') || has('raincoat') ? 1 : 0,
-    sunglasses: has('sunglasses') ? 1 : 0,
-  };
 }

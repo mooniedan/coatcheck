@@ -23,9 +23,10 @@ import {
   SKY_TOP,
   SUN_RAYS,
   TEMP,
-  type Outfit,
+  type WornOutfit,
   type SceneWeather,
 } from '@/lib/scene-model';
+import { FigureBody, STATIC_ANIM, type Anim } from './garments';
 
 // SVG presentation layer for the animated-home scene. All pure model logic (interpolation,
 // the day-tour curves, and the real-weather mappers) lives in lib/scene-model.ts; this file is
@@ -40,6 +41,7 @@ export {
   sceneWeatherFromSnapshot,
   outfitFromRecommendation,
   type SceneWeather,
+  type WornOutfit,
 } from '@/lib/scene-model';
 
 // ── Scene layers ───────────────────────────────────────────────
@@ -414,15 +416,16 @@ function SunRays({ t, clearFactor }: { t: number; clearFactor?: number }) {
 }
 
 // ── Figure ─────────────────────────────────────────────────────
-const SKIN = '#E2B89A';
-const HAIR = '#3D2A1F';
-
-function Figure({ t, walking, outfit }: { t: number; walking: boolean; outfit?: Outfit }) {
-  const o = outfit ?? outfitAt(t);
-  const legL = walking ? 'ahsLegL 1.1s ease-in-out infinite' : 'none';
-  const legR = walking ? 'ahsLegR 1.1s ease-in-out infinite' : 'none';
-  const armL = walking ? 'ahsArmL 1.1s ease-in-out infinite' : 'none';
-  const armR = walking ? 'ahsArmR 1.1s ease-in-out infinite' : 'none';
+function Figure({ t, walking, outfit }: { t: number; walking: boolean; outfit?: WornOutfit }) {
+  const worn = outfit ?? outfitAt(t);
+  const anim: Anim = walking
+    ? {
+        legL: 'ahsLegL 1.1s ease-in-out infinite',
+        legR: 'ahsLegR 1.1s ease-in-out infinite',
+        armL: 'ahsArmL 1.1s ease-in-out infinite',
+        armR: 'ahsArmR 1.1s ease-in-out infinite',
+      }
+    : STATIC_ANIM;
   return (
     <div
       className="ahs-figure-anchor"
@@ -446,85 +449,7 @@ function Figure({ t, walking, outfit }: { t: number; walking: boolean; outfit?: 
         }}
       >
         <svg viewBox="0 0 130 220" width="130" height="220">
-          <ellipse cx="65" cy="216" rx="34" ry="4" fill="#000" opacity="0.15" />
-          {/* Bottoms */}
-          <g style={{ opacity: o.bottoms, transition: 'opacity 0.4s ease' }}>
-            <g style={{ animation: legL, transformOrigin: '60px 130px' }}>
-              <path d="M55 130 Q53 165 50 198 L62 198 Q60 165 62 130 Z" fill="#3A4E66" />
-            </g>
-            <g style={{ animation: legR, transformOrigin: '70px 130px' }}>
-              <path d="M68 130 Q70 165 68 198 L80 198 Q77 165 75 130 Z" fill="#3A4E66" />
-            </g>
-          </g>
-          {/* Footwear */}
-          <g style={{ opacity: o.footwear, transition: 'opacity 0.4s ease' }}>
-            <g style={{ animation: legL, transformOrigin: '60px 130px' }}>
-              <ellipse cx="56" cy="206" rx="9" ry="5" fill="#1F1A14" />
-            </g>
-            <g style={{ animation: legR, transformOrigin: '70px 130px' }}>
-              <ellipse cx="74" cy="206" rx="9" ry="5" fill="#1F1A14" />
-            </g>
-          </g>
-          {/* Base layer */}
-          <g style={{ opacity: o.base * 0.95, transition: 'opacity 0.45s ease' }}>
-            <path d="M40 78 Q35 95 38 130 L92 130 Q95 95 90 78 Q85 70 75 68 L55 68 Q45 70 40 78 Z" fill="#C8B89E" />
-            <g style={{ animation: armL, transformOrigin: '40px 80px' }}>
-              <path d="M40 78 Q30 95 28 120 L36 122 Q40 100 44 82 Z" fill="#C8B89E" />
-            </g>
-            <g style={{ animation: armR, transformOrigin: '90px 80px' }}>
-              <path d="M90 78 Q100 95 102 120 L94 122 Q90 100 86 82 Z" fill="#C8B89E" />
-            </g>
-          </g>
-          {/* Mid: jumper */}
-          <g style={{ opacity: o.mid, transition: 'opacity 0.5s ease' }}>
-            <path d="M38 80 Q33 100 35 132 L95 132 Q97 100 92 80 Q86 72 75 70 L55 70 Q44 72 38 80 Z" fill="#6A5D2E" />
-            <g style={{ animation: armL, transformOrigin: '38px 80px' }}>
-              <path d="M38 80 Q28 100 26 122 L36 124 Q38 102 42 84 Z" fill="#6A5D2E" />
-            </g>
-            <g style={{ animation: armR, transformOrigin: '92px 80px' }}>
-              <path d="M92 80 Q102 100 104 122 L94 124 Q92 102 88 84 Z" fill="#6A5D2E" />
-            </g>
-          </g>
-          {/* Shell */}
-          <g style={{ opacity: o.shell, transition: 'opacity 0.55s ease' }}>
-            <path d="M34 82 Q28 108 31 138 L99 138 Q102 108 96 82 Q88 72 75 70 L55 70 Q42 72 34 82 Z" fill="#8E4B2C" />
-            <path d="M65 78 L65 130" stroke="#5C2E16" strokeWidth="1.5" opacity="0.7" />
-            <path d="M50 74 Q65 60 80 74" fill="none" stroke="#5C2E16" strokeWidth="2" opacity="0.4" />
-            <g style={{ animation: armL, transformOrigin: '34px 80px' }}>
-              <path d="M34 82 Q24 105 22 126 L34 128 Q36 105 40 86 Z" fill="#8E4B2C" />
-            </g>
-            <g style={{ animation: armR, transformOrigin: '96px 80px' }}>
-              <path d="M96 82 Q106 105 108 126 L96 128 Q94 105 90 86 Z" fill="#8E4B2C" />
-            </g>
-          </g>
-          {/* Scarf */}
-          <g style={{ opacity: o.scarf, transition: 'opacity 0.5s ease' }}>
-            <path d="M48 64 Q42 72 46 80 L60 78 L60 90 L70 90 L70 78 L84 80 Q88 72 82 64 Z" fill="#77584C" />
-            <rect x="60" y="78" width="10" height="22" fill="#77584C" />
-          </g>
-          {/* Head / hair */}
-          <g>
-            <ellipse cx="65" cy="50" rx="16" ry="18" fill={SKIN} />
-            <path d="M50 42 Q48 28 65 26 Q82 28 80 42 Q82 50 78 56 Q76 46 65 44 Q54 46 52 56 Q48 50 50 42 Z" fill={HAIR} />
-          </g>
-          {/* Beanie */}
-          <g style={{ opacity: o.beanie, transition: 'opacity 0.5s ease' }}>
-            <path d="M48 44 Q46 28 65 26 Q84 28 82 44 Q82 50 78 52 L52 52 Q48 50 48 44 Z" fill="#3C6E8A" />
-            <rect x="49" y="48" width="32" height="5" fill="#2F5A72" />
-          </g>
-          {/* Sunglasses */}
-          <g style={{ opacity: o.sunglasses, transition: 'opacity 0.5s ease' }}>
-            <rect x="53" y="47" width="9" height="6" rx="2" fill="#1F1A14" />
-            <rect x="68" y="47" width="9" height="6" rx="2" fill="#1F1A14" />
-            <line x1="62" y1="50" x2="68" y2="50" stroke="#1F1A14" strokeWidth="1" />
-          </g>
-          {/* Hands */}
-          <g style={{ animation: armL, transformOrigin: '34px 80px' }}>
-            <circle cx="32" cy="128" r="5.5" fill={SKIN} />
-          </g>
-          <g style={{ animation: armR, transformOrigin: '96px 80px' }}>
-            <circle cx="98" cy="128" r="5.5" fill={SKIN} />
-          </g>
+          <FigureBody worn={worn} anim={anim} />
         </svg>
         {/* Umbrella — a wide canopy (original size, held high) centred on a straight vertical
             pole. The pole is held at the right hand (x=98) and meets the middle of the canopy,
@@ -534,7 +459,7 @@ function Figure({ t, walking, outfit }: { t: number; walking: boolean; outfit?: 
           style={{
             position: 'absolute',
             inset: 0,
-            opacity: o.umbrella,
+            opacity: worn.umbrella ? 1 : 0,
             transition: 'opacity 0.5s ease',
             transformOrigin: '98px 128px',
             animation: walking ? 'ahsUmbrella 2.4s ease-in-out infinite' : 'none',
@@ -645,7 +570,7 @@ export function HeroScene({
   /** Real-weather overlay overrides (resting state). Omit to use the canned day-tour curves. */
   weather?: SceneWeather;
   /** Real recommended outfit for the figure. Omit to use the canned day-tour layering. */
-  outfit?: Outfit;
+  outfit?: WornOutfit;
   reduced?: boolean;
   children?: ReactNode;
 }) {

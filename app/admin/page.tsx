@@ -110,9 +110,14 @@ export default function AdminPage() {
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-4 py-6 sm:py-10">
       <header className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-medium tracking-tight text-on-surface sm:text-3xl">Admin</h1>
-        <Link href="/" className="text-sm font-medium text-primary hover:underline">
-          ← Home
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/admin/wardrobe" className="text-sm font-medium text-primary hover:underline">
+            Wardrobe →
+          </Link>
+          <Link href="/" className="text-sm font-medium text-primary hover:underline">
+            ← Home
+          </Link>
+        </div>
       </header>
 
       {status === 'loading' && <p className="text-on-surface-variant">Loading…</p>}
