@@ -9,6 +9,8 @@ import WeekStrip from '@/components/home/WeekStrip';
 import DayItems from '@/components/home/DayItems';
 import { dayLabel } from '@/components/home/weekday';
 import { isoDate, tripsAlertCount } from '@/components/trip/dates';
+import { useI18n } from '@/components/I18nProvider';
+import { type Locale } from '@/lib/i18n';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES } from '@/lib/types';
 import type {
@@ -25,6 +27,7 @@ import type {
 } from '@/lib/types';
 
 export default function Home() {
+  const { t, locale, setLocale } = useI18n();
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [rec, setRec] = useState<Recommendation | null>(null);
   const [week, setWeek] = useState<DayRecommendation[]>([]);
@@ -177,10 +180,10 @@ export default function Home() {
       body: JSON.stringify({ location: next }),
     });
     if (res.ok) {
-      setHomeMsg(next ? 'Saved as your home.' : 'Home cleared.');
+      setHomeMsg(next ? t('home.saved') : t('home.cleared'));
     } else {
       setHomeLocation(isHome ? location : null); // revert
-      setHomeMsg('Could not save home.');
+      setHomeMsg(t('home.couldNotSave'));
     }
   }
 
@@ -213,7 +216,7 @@ export default function Home() {
         wornItemIds,
       }),
     });
-    setFeedbackMsg(res.ok ? 'Thanks — noted for next time.' : 'Could not save feedback.');
+    setFeedbackMsg(res.ok ? t('feedback.thanks') : t('feedback.couldNotSave'));
   }
 
   // A child profile gets a smaller figure in the scene (same outfit engine).
@@ -229,14 +232,14 @@ export default function Home() {
         <div className="flex items-center gap-3">
           {isAdmin && (
             <Link href="/admin" className="text-sm font-medium text-primary hover:underline">
-              Admin
+              {t('nav.admin')}
             </Link>
           )}
           <Link
             href="/trips"
             className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
-            Trips
+            {t('nav.trips')}
             {tripsAlert > 0 && (
               <span
                 aria-label={`${tripsAlert} trip${tripsAlert === 1 ? '' : 's'} with new weather`}
@@ -248,14 +251,23 @@ export default function Home() {
           </Link>
           {profiles.length > 0 && (
             <Link href="/family" className="text-sm font-medium text-primary hover:underline">
-              Family
+              {t('nav.family')}
             </Link>
           )}
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+            aria-label={t('language.label')}
+            className="rounded-full border border-outline-variant bg-surface-low px-2 py-1 text-sm font-medium text-on-surface-variant outline-none focus:border-primary"
+          >
+            <option value="en">EN</option>
+            <option value="nb">NB</option>
+          </select>
           <SignInButton />
         </div>
       </header>
 
-      <p className="text-on-surface-variant">What should you wear today? Tell me where you are.</p>
+      <p className="text-on-surface-variant">{t('tagline')}</p>
 
       {!signedIn && (
         <Link
@@ -263,11 +275,9 @@ export default function Home() {
           className="flex items-center gap-2 rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant transition-colors hover:bg-surface-high"
         >
           <Icon name="info" size={18} color="var(--md-primary)" strokeWidth={2} />
-          <span>
-            Coat Check is in <span className="font-medium text-on-surface">closed testing</span>.
-          </span>
+          <span>{t('beta.closedTesting')}</span>
           <span className="ml-auto inline-flex items-center gap-1 font-medium text-primary">
-            Join the beta
+            {t('beta.join')}
             <Icon name="chevronRight" size={16} strokeWidth={2} />
           </span>
         </Link>
@@ -295,9 +305,9 @@ export default function Home() {
           <Icon name="pin" size={18} color="var(--md-primary)" strokeWidth={2} />
           <span>
             <span className="font-medium text-on-surface">
-              {pendingInvite.invited_by_email ?? 'Someone'}
+              {pendingInvite.invited_by_email ?? t('invite.someone')}
             </span>{' '}
-            invited you to share their family.
+            {t('invite.shared')}
           </span>
           <button
             onClick={acceptFamilyInvite}
@@ -309,7 +319,7 @@ export default function Home() {
             onClick={() => setPendingInvite(null)}
             className="rounded-full px-3 py-1.5 font-medium text-on-surface-variant transition-colors hover:bg-surface-high"
           >
-            Not now
+            {t('invite.notNow')}
           </button>
         </div>
       )}
@@ -318,7 +328,7 @@ export default function Home() {
 
       {profiles.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-on-surface-variant">For:</span>
+          <span className="text-on-surface-variant">{t('profilesFor')}</span>
           {profiles.map((p) => (
             <button
               key={p.id}
@@ -335,7 +345,7 @@ export default function Home() {
         </div>
       )}
 
-      {loading && <p className="text-on-surface-variant">Checking the skies…</p>}
+      {loading && <p className="text-on-surface-variant">{t('loading')}</p>}
       {error && (
         <p className="rounded-2xl bg-error-container px-4 py-3 text-on-error-container">{error}</p>
       )}
@@ -366,7 +376,7 @@ export default function Home() {
                           : 'text-on-surface-variant hover:bg-surface-high'
                       }`}
                     >
-                      {v === 'scene' ? 'Scene' : 'List'}
+                      {v === 'scene' ? t('view.scene') : t('view.list')}
                     </button>
                   ))}
                 </div>
@@ -386,7 +396,7 @@ export default function Home() {
                   }`}
                 >
                   <Icon name="pin" size={15} color={isHome ? 'currentColor' : 'var(--md-primary)'} />
-                  {isHome ? 'Home' : 'Set as home'}
+                  {isHome ? t('home.home') : t('home.setHome')}
                 </button>
               )}
             </div>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Roboto_Flex } from 'next/font/google';
 import './globals.css';
+import { I18nProvider } from '@/components/I18nProvider';
 import { version } from '../package.json';
 
 // Roboto Flex — the design system's typeface. Exposed as --font-roboto-flex,
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {/* suppressHydrationWarning: browser extensions (e.g. ColorZilla) inject attributes
           onto <body> before React hydrates, which would otherwise log a mismatch. */}
       <body suppressHydrationWarning>
-        {children}
+        <I18nProvider>{children}</I18nProvider>
         {/* Faint, site-wide build marker — low element opacity so it reads as a watermark
             (the opacity modifier can't inject alpha into the CSS-var colour). */}
         <footer className="pb-4 pt-2 text-center text-[11px] tracking-wide text-on-surface-variant opacity-40">

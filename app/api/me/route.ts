@@ -55,19 +55,20 @@ export async function GET() {
       account = inserted.data;
     }
 
-    // Best-effort: fold in the saved home location. Done as a separate select so a not-yet-
-    // migrated database (no home_location column) degrades to "no home" rather than failing
-    // the whole account lookup.
+    // Best-effort: fold in the saved home location + language preference. Done as a separate
+    // select so a not-yet-migrated database degrades gracefully rather than failing the lookup.
     let home_location = null;
+    let locale = null;
     {
-      const { data: home } = await admin
+      const { data: prefs } = await admin
         .from('accounts')
-        .select('home_location')
+        .select('home_location, locale')
         .eq('id', account!.id)
         .maybeSingle();
-      home_location = home?.home_location ?? null;
+      home_location = prefs?.home_location ?? null;
+      locale = prefs?.locale ?? null;
     }
-    const accountWithHome = { ...account!, home_location };
+    const accountWithHome = { ...account!, home_location, locale };
 
     // Ensure the account has a family (heals accounts provisioned before family sharing) and
     // backfill any profiles created before the API rework that still have a null family_id.

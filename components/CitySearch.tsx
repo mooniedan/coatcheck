@@ -6,6 +6,7 @@
 // exact coordinates; pressing Enter on free text still submits the typed query (top match).
 
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '@/components/I18nProvider';
 import type { GeocodeResponse, ResolvedLocation } from '@/lib/types';
 
 // Regional-indicator flag emoji from an ISO-3166 alpha-2 code.
@@ -28,6 +29,7 @@ export default function CitySearch({
   onSubmitText: (query: string) => void;
   onUseMyLocation: () => void;
 }) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ResolvedLocation[]>([]);
   const [open, setOpen] = useState(false);
@@ -127,7 +129,7 @@ export default function CitySearch({
           }}
           onFocus={() => results.length > 0 && setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="City or address…"
+          placeholder={t('search.placeholder')}
           role="combobox"
           aria-expanded={open}
           aria-controls="city-suggestions"
@@ -181,14 +183,14 @@ export default function CitySearch({
           type="submit"
           className="flex-1 rounded-full bg-primary px-6 py-3 font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90 sm:flex-none"
         >
-          Check
+          {t('search.check')}
         </button>
         <button
           type="button"
           onClick={onUseMyLocation}
           className="inline-flex items-center gap-1.5 rounded-full bg-surface-high px-4 py-3 font-medium text-on-surface transition-colors hover:bg-surface-highest"
         >
-          <span aria-hidden>📍</span> Me
+          <span aria-hidden>📍</span> {t('search.me')}
         </button>
       </div>
     </form>

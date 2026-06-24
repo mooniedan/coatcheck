@@ -130,6 +130,8 @@ export interface Account {
   cohort: Cohort;
   /** The account's saved "home" location — the open-on-launch fallback when GPS isn't readable. */
   home_location?: ResolvedLocation | null;
+  /** The account's saved language preference ('en' | 'nb'); null = follow the browser. */
+  locale?: string | null;
 }
 
 export interface ApiError {

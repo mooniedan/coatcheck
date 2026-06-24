@@ -21,6 +21,8 @@ import {
 import { recommend } from '@/lib/recommend';
 import { describeWeatherCode } from '@/lib/wmo';
 import { Icon } from '@/components/ui/Icon';
+import { useT } from '@/components/I18nProvider';
+import { itemName, weatherName } from '@/lib/i18n';
 import { getItemIcon } from '@/lib/itemIcons';
 import { DEFAULT_CATALOG } from '@/lib/catalog';
 import { CATEGORIES } from '@/lib/types';
@@ -105,6 +107,7 @@ export default function AnimatedHome({
   /** Figure size relative to an adult (e.g. ~0.75 when the active profile is a child). */
   figureScale?: number;
 }) {
+  const tr = useT();
   const [phase, setPhase] = useState<Phase>('tour');
   const [t, setT] = useState(0);
   const [controls, setControls] = useState(false);
@@ -230,6 +233,7 @@ export default function AnimatedHome({
       outfit: outfitFromRecommendation(hourRec),
       feels: Math.round(snapshot.feelsLikeC),
       description: snapshot.description,
+      code: snapshot.weatherCode,
       rec: hourRec,
     };
   }, [day?.hours, selectedHour, comfortOffsetC]);
@@ -260,7 +264,9 @@ export default function AnimatedHome({
     : phase === 'rest'
       ? outfitFromRecommendation(rec)
       : undefined;
-  const description = useHour ? hourView.description : rec.weather.description;
+  const description = useHour
+    ? weatherName(tr, hourView.code, hourView.description)
+    : weatherName(tr, rec.weather.weatherCode, rec.weather.description);
 
   // Feedback is about what you actually wore today, so it's only live on today's view.
   const feedbackEnabled = signedIn && isToday;
@@ -363,11 +369,9 @@ export default function AnimatedHome({
             }}
           />
         ) : !signedIn ? (
-          <p className="px-5 pb-4 text-sm text-on-surface-variant">Sign in to add feedback.</p>
+          <p className="px-5 pb-4 text-sm text-on-surface-variant">{tr('feedback.signInToAdd')}</p>
         ) : !isToday ? (
-          <p className="px-5 pb-4 text-sm text-on-surface-variant">
-            Feedback applies to today&apos;s outfit.
-          </p>
+          <p className="px-5 pb-4 text-sm text-on-surface-variant">{tr('feedback.todayOnly')}</p>
         ) : feedbackMsg ? (
           <p className="px-5 pb-4 text-sm text-on-surface-variant">{feedbackMsg}</p>
         ) : null}
@@ -386,10 +390,11 @@ function FeedbackRow({
   disabled?: boolean;
   active?: Verdict | null;
 }) {
+  const tr = useT();
   const items = [
-    { id: 'too_cold' as const, icon: 'snowflake' as const, label: 'Too cold', tone: 'cool' },
-    { id: 'too_hot' as const, icon: 'sun' as const, label: 'Too hot', tone: 'warm' },
-    { id: 'just_right' as const, icon: 'check' as const, label: 'Perfect', tone: 'just' },
+    { id: 'too_cold' as const, icon: 'snowflake' as const, label: tr('feedback.tooCold'), tone: 'cool' },
+    { id: 'too_hot' as const, icon: 'sun' as const, label: tr('feedback.tooHot'), tone: 'warm' },
+    { id: 'just_right' as const, icon: 'check' as const, label: tr('feedback.perfect'), tone: 'just' },
   ];
   const tones: Record<string, { cls: string; ring: string }> = {
     cool: { cls: 'bg-cool-container text-cool', ring: 'border-cool' },
@@ -434,6 +439,7 @@ function ComfortPicker({
   onSave: () => void;
   onSkip: () => void;
 }) {
+  const tr = useT();
   const direction = verdict === 'too_cold' ? 'warmer' : 'cooler';
   return (
     <div className="mx-5 mb-4 rounded-2xl border border-outline-variant bg-surface-low p-4">
@@ -468,7 +474,7 @@ function ComfortPicker({
                       }`}
                     >
                       <Icon name={getItemIcon(item)} size={15} strokeWidth={1.6} />
-                      {item.name}
+                      {itemName(tr, item)}
                     </button>
                   );
                 })}
@@ -631,10 +637,12 @@ function ExplodedOutfit({ items, onClose }: { items: ClothingItem[]; onClose: ()
 }
 
 function ExpChip({ item, side, y }: { item: ClothingItem; side: 'left' | 'right'; y: number }) {
+  const tr = useT();
+  const label = itemName(tr, item);
   return (
     <div
       role="group"
-      aria-label={item.name}
+      aria-label={label}
       style={{
         position: 'absolute',
         ...(side === 'left' ? { left: 8 } : { right: 8 }),
@@ -677,12 +685,10 @@ function ExpChip({ item, side, y }: { item: ClothingItem; side: 'left' | 'right'
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
-        >
-          {item.name}
-        </div>
+        >{label}</div>
       </div>
       <button
-        aria-label={`Swap ${item.name}`}
+        aria-label={`Swap ${label}`}
         style={{
           background: 'transparent',
           border: 'none',
