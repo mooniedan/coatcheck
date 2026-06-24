@@ -4,8 +4,11 @@
 // in the warm-clay language. Sleeves/legs render into the caller-supplied walk-cycle animation
 // (`anim`) so they swing with the body. Umbrella is a positioned overlay (see scene.tsx).
 
+'use client';
+
 import type { ReactNode } from 'react';
 import type { WornOutfit } from '@/lib/scene-model';
+import { useWalkDelay } from './useWalkDelay';
 
 export type Anim = { armL: string; armR: string; legL: string; legR: string };
 export const STATIC_ANIM: Anim = { armL: 'none', armR: 'none', legL: 'none', legR: 'none' };
@@ -36,11 +39,23 @@ const LEG_R_SHORT = 'M68 130 Q69 148 68 163 L80 163 Q78 148 75 130 Z';
 
 // ── Building blocks ────────────────────────────────────────────
 function ArmGroup({ anim, side, origin, children }: { anim: Anim; side: 'L' | 'R'; origin: string; children: ReactNode }) {
-  return <g style={{ animation: side === 'L' ? anim.armL : anim.armR, transformOrigin: origin }}>{children}</g>;
+  const animation = side === 'L' ? anim.armL : anim.armR;
+  // Phase-anchor delay keeps this group in sync with the rest of the figure even if it mounts
+  // mid-walk (e.g. a garment swap as the day scrubs). animationDelay must follow the shorthand.
+  const animationDelay = useWalkDelay(animation !== 'none');
+  return <g style={{ animation, transformOrigin: origin, animationDelay }}>{children}</g>;
 }
 function LegGroup({ anim, side, children }: { anim: Anim; side: 'L' | 'R'; children: ReactNode }) {
+  const animation = side === 'L' ? anim.legL : anim.legR;
+  const animationDelay = useWalkDelay(animation !== 'none');
   return (
-    <g style={{ animation: side === 'L' ? anim.legL : anim.legR, transformOrigin: side === 'L' ? '60px 130px' : '70px 130px' }}>
+    <g
+      style={{
+        animation,
+        transformOrigin: side === 'L' ? '60px 130px' : '70px 130px',
+        animationDelay,
+      }}
+    >
       {children}
     </g>
   );

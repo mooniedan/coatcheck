@@ -27,6 +27,7 @@ import {
   type SceneWeather,
 } from '@/lib/scene-model';
 import { FigureBody, STATIC_ANIM, type Anim } from './garments';
+import { useWalkDelay } from './useWalkDelay';
 
 // SVG presentation layer for the animated-home scene. All pure model logic (interpolation,
 // the day-tour curves, and the real-weather mappers) lives in lib/scene-model.ts; this file is
@@ -426,6 +427,7 @@ function Figure({ t, walking, outfit }: { t: number; walking: boolean; outfit?: 
         armR: 'ahsArmR 1.1s ease-in-out infinite',
       }
     : STATIC_ANIM;
+  const bobDelay = useWalkDelay(walking);
   return (
     <div
       className="ahs-figure-anchor"
@@ -443,6 +445,8 @@ function Figure({ t, walking, outfit }: { t: number; walking: boolean; outfit?: 
         className="ahs-figure-bob"
         style={{
           animation: walking ? 'ahsBob 1.1s ease-in-out infinite' : 'ahsBobAmbient 4s ease-in-out infinite',
+          // Anchor the bob to the same walk phase as the limbs (which are phase-corrected too).
+          animationDelay: bobDelay,
           position: 'relative',
           width: '100%',
           height: '100%',
