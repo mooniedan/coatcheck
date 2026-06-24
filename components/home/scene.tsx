@@ -417,7 +417,18 @@ function SunRays({ t, clearFactor }: { t: number; clearFactor?: number }) {
 }
 
 // ── Figure ─────────────────────────────────────────────────────
-function Figure({ t, walking, outfit }: { t: number; walking: boolean; outfit?: WornOutfit }) {
+function Figure({
+  t,
+  walking,
+  outfit,
+  scale = 1,
+}: {
+  t: number;
+  walking: boolean;
+  outfit?: WornOutfit;
+  /** Figure size relative to an adult (e.g. ~0.75 for a child). Pivots at the feet. */
+  scale?: number;
+}) {
   const worn = outfit ?? outfitAt(t);
   const anim: Anim = walking
     ? {
@@ -435,7 +446,9 @@ function Figure({ t, walking, outfit }: { t: number; walking: boolean; outfit?: 
         position: 'absolute',
         left: '50%',
         bottom: '12%',
-        transform: 'translateX(-50%)',
+        // Scale about the feet (bottom-centre) so a smaller figure stays planted on the ground.
+        transform: `translateX(-50%) scale(${scale})`,
+        transformOrigin: 'bottom center',
         width: 130,
         height: 220,
         pointerEvents: 'none',
@@ -565,6 +578,7 @@ export function HeroScene({
   weather,
   outfit,
   reduced,
+  figureScale = 1,
   children,
 }: {
   t: number;
@@ -576,6 +590,8 @@ export function HeroScene({
   /** Real recommended outfit for the figure. Omit to use the canned day-tour layering. */
   outfit?: WornOutfit;
   reduced?: boolean;
+  /** Figure size relative to an adult (e.g. ~0.75 for a child profile). */
+  figureScale?: number;
   children?: ReactNode;
 }) {
   return (
@@ -596,7 +612,7 @@ export function HeroScene({
         intensity={weather?.rain}
         animate={weather ? !reduced : undefined}
       />
-      <Figure t={t} walking={walking} outfit={outfit} />
+      <Figure t={t} walking={walking} outfit={outfit} scale={figureScale} />
       <HeroClock t={t} label={clockLabel} />
       {children}
     </div>

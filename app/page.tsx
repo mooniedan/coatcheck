@@ -203,6 +203,10 @@ export default function Home() {
     setFeedbackMsg(res.ok ? 'Thanks — noted for next time.' : 'Could not save feedback.');
   }
 
+  // A child profile gets a smaller figure in the scene (same outfit engine).
+  const activeRelationship = profiles.find((p) => p.id === activeProfile)?.relationship;
+  const figureScale = activeRelationship === 'child' ? 0.75 : 1;
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
       <header className="flex items-center justify-between gap-4">
@@ -370,6 +374,7 @@ export default function Home() {
               signedIn={isTester}
               onFeedback={sendFeedback}
               feedbackMsg={feedbackMsg}
+              figureScale={figureScale}
             />
           )}
         </div>

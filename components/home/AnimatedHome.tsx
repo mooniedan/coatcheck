@@ -89,6 +89,7 @@ export default function AnimatedHome({
   signedIn,
   onFeedback,
   feedbackMsg,
+  figureScale = 1,
 }: {
   location: ResolvedLocation;
   rec: Recommendation;
@@ -101,6 +102,8 @@ export default function AnimatedHome({
   signedIn: boolean;
   onFeedback: (v: Verdict, wornItemIds?: string[]) => void;
   feedbackMsg: string | null;
+  /** Figure size relative to an adult (e.g. ~0.75 when the active profile is a child). */
+  figureScale?: number;
 }) {
   const [phase, setPhase] = useState<Phase>('tour');
   const [t, setT] = useState(0);
@@ -279,6 +282,7 @@ export default function AnimatedHome({
             weather={sceneWeather}
             outfit={sceneOutfit}
             reduced={reduced}
+            figureScale={figureScale}
           >
             <FeelsBadge t={skyT} hidden={exploded} overrideTemp={exploded ? undefined : badgeTemp} />
           </HeroScene>
