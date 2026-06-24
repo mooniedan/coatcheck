@@ -87,6 +87,31 @@ export async function GET() {
       .or(caller ? profileScopeFilter(caller) : `account_id.eq.${account!.id}`)
       .order('created_at', { ascending: true });
 
+    // Surface a pending family invite for this email (to a family they're not yet in).
+    let pendingFamilyInvite = null;
+    if (caller && user.email) {
+      const { data: inv } = await admin
+        .from('family_invites')
+        .select('family_id, invited_by')
+        .eq('email', user.email.toLowerCase())
+        .neq('family_id', caller.familyId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (inv) {
+        let invited_by_email: string | null = null;
+        if (inv.invited_by) {
+          const { data: inviter } = await admin
+            .from('accounts')
+            .select('email')
+            .eq('id', inv.invited_by)
+            .maybeSingle();
+          invited_by_email = inviter?.email ?? null;
+        }
+        pendingFamilyInvite = { family_id: inv.family_id, invited_by_email };
+      }
+    }
+
     if (profiles && profiles.length === 0) {
       const name =
         (user.user_metadata?.full_name as string | undefined) ??
@@ -107,6 +132,7 @@ export async function GET() {
         account: accountWithHome,
         profiles: created.data ? [created.data] : [],
         status: 'active',
+        pendingFamilyInvite,
       });
     }
 
@@ -115,6 +141,7 @@ export async function GET() {
       account: accountWithHome,
       profiles: profiles ?? [],
       status: 'active',
+      pendingFamilyInvite,
     });
   } catch (err) {
     // Database not migrated yet — return the user so the UI still renders. Log detail

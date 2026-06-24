@@ -142,7 +142,34 @@ export interface MeResponse {
   profiles: Profile[];
   /** 'active' = an invited tester; 'waitlisted' = signed in but not yet allow-listed. */
   status?: 'active' | 'waitlisted';
+  /** A pending family invite for this user's email (to a family they're not yet in). */
+  pendingFamilyInvite?: PendingFamilyInvite | null;
   warning?: string;
+}
+
+// ── Family sharing ─────────────────────────────────────────────
+export interface FamilyMember {
+  account_id: string;
+  email: string | null;
+  role: string; // 'owner' | 'member'
+  is_self: boolean;
+}
+
+export interface FamilyInvite {
+  id: string;
+  email: string;
+}
+
+export interface FamilyResponse {
+  family_id: string;
+  role: string;
+  members: FamilyMember[];
+  invites: FamilyInvite[];
+}
+
+export interface PendingFamilyInvite {
+  family_id: string;
+  invited_by_email: string | null;
 }
 
 export interface RecommendationsResponse {
