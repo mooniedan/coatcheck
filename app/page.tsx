@@ -16,6 +16,7 @@ import type {
   DayRecommendation,
   MeResponse,
   Profile,
+  PendingFamilyInvite,
   Recommendation,
   RecommendationsResponse,
   ResolvedLocation,
@@ -40,6 +41,7 @@ export default function Home() {
   const [isTester, setIsTester] = useState(false); // signed in AND invited (allow-listed)
   const [waitlisted, setWaitlisted] = useState(false); // signed in but not yet invited
   const [isAdmin, setIsAdmin] = useState(false);
+  const [pendingInvite, setPendingInvite] = useState<PendingFamilyInvite | null>(null);
 
   // Saved "home" location (the open-on-launch fallback when GPS isn't readable) + a once-guard
   // so the auto-load runs a single time after /api/me resolves.
@@ -80,6 +82,7 @@ export default function Home() {
         setProfiles(data.profiles ?? []);
         if (data.profiles?.length) setActiveProfile(data.profiles[0].id);
         setHomeLocation(data.account?.home_location ?? null);
+        setPendingInvite(data.pendingFamilyInvite ?? null);
       })
       .catch(() => {})
       .finally(() => setMeReady(true));
@@ -181,6 +184,16 @@ export default function Home() {
     }
   }
 
+  // Accept a pending family invite → join the inviting family, then refresh profiles.
+  async function acceptFamilyInvite() {
+    const res = await fetch('/api/family/accept', { method: 'POST' });
+    if (!res.ok) return;
+    setPendingInvite(null);
+    const me = (await (await fetch('/api/me')).json()) as MeResponse;
+    setProfiles(me.profiles ?? []);
+    setActiveProfile(me.profiles?.[0]?.id ?? null);
+  }
+
   async function sendFeedback(verdict: Verdict, wornItemIds?: string[]) {
     if (!activeProfile || !rec) {
       setFeedbackMsg('Sign in and pick a profile to tune your recommendations.');
@@ -275,6 +288,30 @@ export default function Home() {
             <Icon name="chevronRight" size={16} strokeWidth={2} />
           </span>
         </Link>
+      )}
+
+      {pendingInvite && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant">
+          <Icon name="pin" size={18} color="var(--md-primary)" strokeWidth={2} />
+          <span>
+            <span className="font-medium text-on-surface">
+              {pendingInvite.invited_by_email ?? 'Someone'}
+            </span>{' '}
+            invited you to share their family.
+          </span>
+          <button
+            onClick={acceptFamilyInvite}
+            className="ml-auto rounded-full bg-primary px-4 py-1.5 font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90"
+          >
+            Join
+          </button>
+          <button
+            onClick={() => setPendingInvite(null)}
+            className="rounded-full px-3 py-1.5 font-medium text-on-surface-variant transition-colors hover:bg-surface-high"
+          >
+            Not now
+          </button>
+        </div>
       )}
 
       <CitySearch onPick={pickLocation} onSubmitText={searchText} onUseMyLocation={useMyLocation} />
