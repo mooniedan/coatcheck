@@ -2,10 +2,7 @@
 
 import type { IconName } from '@/components/ui/Icon';
 import type { GlyphCategory } from '@/lib/wmo';
-import type { Locale } from '@/lib/i18n';
-
-// Intl tag per app locale (en-GB gives day-before-month, matching the design).
-export const LOCALE_TAG: Record<Locale, string> = { en: 'en-GB', nb: 'nb-NO' };
+import { type Locale, LOCALE_TAG } from '@/lib/i18n';
 
 // Map the shared WMO glyph category to this app's stroke-icon set.
 export const GLYPH_ICON: Record<GlyphCategory, IconName> = {

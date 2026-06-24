@@ -8,6 +8,9 @@ export type Locale = 'en' | 'nb';
 export const LOCALES: Locale[] = ['en', 'nb'];
 export const DEFAULT_LOCALE: Locale = 'en';
 
+// Intl/BCP-47 tag per app locale, for toLocaleDateString etc. (en-GB → day-before-month).
+export const LOCALE_TAG: Record<Locale, string> = { en: 'en-GB', nb: 'nb-NO' };
+
 export const MESSAGES: Record<Locale, Messages> = { en, nb };
 
 export function isLocale(x: unknown): x is Locale {

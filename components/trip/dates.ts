@@ -2,8 +2,7 @@
 // matching Open-Meteo's free 16-day window (see MAX_FORECAST_DAYS).
 
 import type { Trip } from '@/lib/types';
-import type { Locale } from '@/lib/i18n';
-import { LOCALE_TAG } from '@/components/home/weekday';
+import { type Locale, LOCALE_TAG } from '@/lib/i18n';
 
 export const TRIP_HORIZON_DAYS = 15;
 

@@ -13,16 +13,29 @@ export interface CallerFamily {
   cohort: string;
 }
 
+// The caller's account row (id + cohort) by auth user id. The single place the
+// accounts.eq(user_id) lookup lives — every route resolves the caller through here.
+async function callerAccount(userId: string): Promise<{ id: string; cohort: string } | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('accounts')
+    .select('id, cohort')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+// Just the caller's account id (null if they have no account — waitlisted / not provisioned).
+export async function callerAccountId(userId: string): Promise<string | null> {
+  return (await callerAccount(userId))?.id ?? null;
+}
+
 // The caller's account + family. Idempotently ensures the account has a family (creates a
 // family-of-one as owner if missing — heals accounts provisioned before family sharing).
 // Returns null only when the user has no account at all (waitlisted / not provisioned).
 export async function ensureCallerFamily(userId: string): Promise<CallerFamily | null> {
   const admin = createAdminClient();
-  const { data: account } = await admin
-    .from('accounts')
-    .select('id, cohort')
-    .eq('user_id', userId)
-    .maybeSingle();
+  const account = await callerAccount(userId);
   if (!account) return null;
 
   const { data: member } = await admin
@@ -39,6 +52,24 @@ export async function ensureCallerFamily(userId: string): Promise<CallerFamily |
   if (!fam) return null;
   await admin.from('family_members').insert({ family_id: fam.id, account_id: account.id, role: 'owner' });
   return { accountId: account.id, familyId: fam.id, role: 'owner', cohort: account.cohort };
+}
+
+// The newest pending family invite for an email, to a family the caller isn't already in.
+// Shared by /api/me (surfacing the invite) and /api/family/accept (consuming it).
+export async function findPendingInvite(
+  email: string,
+  excludeFamilyId: string
+): Promise<{ id: string; family_id: string; invited_by: string | null } | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('family_invites')
+    .select('id, family_id, invited_by')
+    .eq('email', email.toLowerCase())
+    .neq('family_id', excludeFamilyId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
 }
 
 // A PostgREST `.or(...)` filter that matches profiles in the caller's family OR (transition

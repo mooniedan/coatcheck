@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireUser } from '@/lib/supabase/auth';
+import { callerAccountId } from '@/lib/supabase/family';
 
 export const runtime = 'nodejs';
 
@@ -11,19 +12,15 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   if (auth instanceof NextResponse) return auth;
   const { id } = await params;
 
-  const admin = createAdminClient();
-  const { data: account } = await admin
-    .from('accounts')
-    .select('id')
-    .eq('user_id', auth.user.id)
-    .maybeSingle();
-  if (!account) return NextResponse.json({ error: 'No account' }, { status: 400 });
+  const accountId = await callerAccountId(auth.user.id);
+  if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 400 });
 
+  const admin = createAdminClient();
   const { error } = await admin
     .from('trips')
     .update({ seen_at: new Date().toISOString() })
     .eq('id', id)
-    .eq('account_id', account.id);
+    .eq('account_id', accountId);
   if (error) {
     console.error('POST /api/trips/[id]/seen failed:', error);
     return NextResponse.json({ error: 'Could not mark seen' }, { status: 500 });

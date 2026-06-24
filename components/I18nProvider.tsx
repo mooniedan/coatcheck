@@ -9,7 +9,7 @@ import {
   localeFromBrowser,
   makeT,
 } from '@/lib/i18n';
-import type { MeResponse } from '@/lib/types';
+import { useMe } from '@/components/MeProvider';
 
 interface I18nCtx {
   locale: Locale;
@@ -27,17 +27,16 @@ const I18nContext = createContext<I18nCtx>({
 // language, else English. Persists changes to the account (so it follows you on every device
 // and future native clients). No URL routing — the locale is a preference, not a path.
 export function I18nProvider({ children }: { children: React.ReactNode }) {
+  const { me } = useMe();
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
 
+  // Browser language first; the saved account preference (from the shared /api/me) overrides it.
   useEffect(() => {
     setLocaleState(localeFromBrowser(navigator.language));
-    fetch('/api/me')
-      .then((r) => r.json() as Promise<MeResponse>)
-      .then((d) => {
-        if (isLocale(d.account?.locale)) setLocaleState(d.account.locale);
-      })
-      .catch(() => {});
   }, []);
+  useEffect(() => {
+    if (isLocale(me?.account?.locale)) setLocaleState(me.account.locale);
+  }, [me]);
 
   useEffect(() => {
     document.documentElement.lang = locale;

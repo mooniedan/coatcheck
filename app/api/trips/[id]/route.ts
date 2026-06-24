@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireUser } from '@/lib/supabase/auth';
+import { callerAccountId } from '@/lib/supabase/family';
+import { TRIP_COLS } from '@/lib/trips';
 import { normalizeLocation, isValidIsoDate } from '@/lib/location';
 
 export const runtime = 'nodejs';
@@ -10,20 +12,13 @@ export const runtime = 'nodejs';
 //   PATCH  /api/trips/[id]  { location?, startDate?, endDate? } → edit fields
 //   DELETE /api/trips/[id]                                   → remove
 
-const TRIP_COLS = 'id, location, start_date, end_date, created_at, seen_at';
-
-async function ownerAccountId(userId: string) {
-  const admin = createAdminClient();
-  const { data } = await admin.from('accounts').select('id').eq('user_id', userId).maybeSingle();
-  return data?.id ?? null;
-}
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireUser();
   if (auth instanceof NextResponse) return auth;
   const { id } = await params;
 
-  const accountId = await ownerAccountId(auth.user.id);
+  const accountId = await callerAccountId(auth.user.id);
   if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -70,7 +65,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
   }
 
-  const accountId = await ownerAccountId(auth.user.id);
+  const accountId = await callerAccountId(auth.user.id);
   if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -113,7 +108,7 @@ export async function DELETE(
   if (auth instanceof NextResponse) return auth;
   const { id } = await params;
 
-  const accountId = await ownerAccountId(auth.user.id);
+  const accountId = await callerAccountId(auth.user.id);
   if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 400 });
 
   const admin = createAdminClient();

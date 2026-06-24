@@ -10,15 +10,13 @@ import DayItems from '@/components/home/DayItems';
 import { dayLabel } from '@/components/home/weekday';
 import { isoDate, tripsAlertCount } from '@/components/trip/dates';
 import { useI18n } from '@/components/I18nProvider';
-import { type Locale } from '@/lib/i18n';
+import { useMe } from '@/components/MeProvider';
+import { type Locale, LOCALES } from '@/lib/i18n';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES } from '@/lib/types';
 import type {
   ApiError,
   DayRecommendation,
-  MeResponse,
-  Profile,
-  PendingFamilyInvite,
   Recommendation,
   RecommendationsResponse,
   ResolvedLocation,
@@ -37,21 +35,27 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  // Session comes from the shared /api/me (MeProvider) — derived, not re-fetched here.
+  const { me, loading: meLoading, setMe, refresh: refreshMe } = useMe();
+  const signedIn = Boolean(me?.user);
+  const isTester = me?.status === 'active'; // signed in AND invited (allow-listed)
+  const waitlisted = Boolean(me?.user) && me?.status === 'waitlisted';
+  const isAdmin = me?.user?.role === 'admin' || me?.user?.role === 'superadmin';
+  const profiles = me?.profiles ?? [];
+  const pendingInvite = me?.pendingFamilyInvite ?? null;
+  const homeLocation = me?.account?.home_location ?? null;
+  const meReady = !meLoading;
+
   const [activeProfile, setActiveProfile] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
-  const [signedIn, setSignedIn] = useState(false);
-  const [isTester, setIsTester] = useState(false); // signed in AND invited (allow-listed)
-  const [waitlisted, setWaitlisted] = useState(false); // signed in but not yet invited
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [pendingInvite, setPendingInvite] = useState<PendingFamilyInvite | null>(null);
-
-  // Saved "home" location (the open-on-launch fallback when GPS isn't readable) + a once-guard
-  // so the auto-load runs a single time after /api/me resolves.
-  const [homeLocation, setHomeLocation] = useState<ResolvedLocation | null>(null);
   const [homeMsg, setHomeMsg] = useState<string | null>(null);
-  const [meReady, setMeReady] = useState(false);
+  const [inviteDismissed, setInviteDismissed] = useState(false);
   const autoLoadedRef = useRef(false);
+
+  // Default the active profile to the first once profiles load.
+  useEffect(() => {
+    setActiveProfile((cur) => cur ?? me?.profiles?.[0]?.id ?? null);
+  }, [me]);
 
   // Trips-nav badge: how many saved trips just became forecastable (and haven't been opened).
   const [tripsAlert, setTripsAlert] = useState(0);
@@ -73,23 +77,6 @@ export default function Home() {
       resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [rec, location, loading]);
-
-  useEffect(() => {
-    fetch('/api/me')
-      .then((r) => r.json() as Promise<MeResponse>)
-      .then((data) => {
-        setSignedIn(Boolean(data.user));
-        setIsTester(data.status === 'active');
-        setWaitlisted(Boolean(data.user) && data.status === 'waitlisted');
-        setIsAdmin(data.user?.role === 'admin' || data.user?.role === 'superadmin');
-        setProfiles(data.profiles ?? []);
-        if (data.profiles?.length) setActiveProfile(data.profiles[0].id);
-        setHomeLocation(data.account?.home_location ?? null);
-        setPendingInvite(data.pendingFamilyInvite ?? null);
-      })
-      .catch(() => {})
-      .finally(() => setMeReady(true));
-  }, []);
 
   // `displayLocation` lets a picked autocomplete result drive the header label even though we
   // fetch by lat/lng (the coordinate path resolves to a generic "Your location" name).
@@ -169,11 +156,16 @@ export default function Home() {
       Math.abs(location.longitude - homeLocation.longitude) < 1e-4
   );
 
+  // Optimistically patch the cached home location (home lives on the shared /api/me payload).
+  const patchHome = (loc: ResolvedLocation | null) => {
+    if (me?.account) setMe({ ...me, account: { ...me.account, home_location: loc } });
+  };
+
   // Pin the current place as home, or clear it when it's already home.
   async function toggleHome() {
     if (!location) return;
     const next = isHome ? null : location;
-    setHomeLocation(next); // optimistic
+    patchHome(next); // optimistic
     const res = await fetch('/api/home', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -182,19 +174,15 @@ export default function Home() {
     if (res.ok) {
       setHomeMsg(next ? t('home.saved') : t('home.cleared'));
     } else {
-      setHomeLocation(isHome ? location : null); // revert
+      patchHome(isHome ? location : null); // revert
       setHomeMsg(t('home.couldNotSave'));
     }
   }
 
-  // Accept a pending family invite → join the inviting family, then refresh profiles.
+  // Accept a pending family invite → join the inviting family, then refresh the session.
   async function acceptFamilyInvite() {
     const res = await fetch('/api/family/accept', { method: 'POST' });
-    if (!res.ok) return;
-    setPendingInvite(null);
-    const me = (await (await fetch('/api/me')).json()) as MeResponse;
-    setProfiles(me.profiles ?? []);
-    setActiveProfile(me.profiles?.[0]?.id ?? null);
+    if (res.ok) await refreshMe();
   }
 
   async function sendFeedback(verdict: Verdict, wornItemIds?: string[]) {
@@ -260,8 +248,11 @@ export default function Home() {
             aria-label={t('language.label')}
             className="rounded-full border border-outline-variant bg-surface-low px-2 py-1 text-sm font-medium text-on-surface-variant outline-none focus:border-primary"
           >
-            <option value="en">EN</option>
-            <option value="nb">NB</option>
+            {LOCALES.map((l) => (
+              <option key={l} value={l}>
+                {l.toUpperCase()}
+              </option>
+            ))}
           </select>
           <SignInButton />
         </div>
@@ -300,7 +291,7 @@ export default function Home() {
         </Link>
       )}
 
-      {pendingInvite && (
+      {pendingInvite && !inviteDismissed && (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant">
           <Icon name="pin" size={18} color="var(--md-primary)" strokeWidth={2} />
           <span>
@@ -316,7 +307,7 @@ export default function Home() {
             Join
           </button>
           <button
-            onClick={() => setPendingInvite(null)}
+            onClick={() => setInviteDismissed(true)}
             className="rounded-full px-3 py-1.5 font-medium text-on-surface-variant transition-colors hover:bg-surface-high"
           >
             {t('invite.notNow')}

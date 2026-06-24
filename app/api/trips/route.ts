@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireUser } from '@/lib/supabase/auth';
+import { callerAccountId } from '@/lib/supabase/family';
+import { TRIP_COLS } from '@/lib/trips';
 import { normalizeLocation, isValidIsoDate } from '@/lib/location';
 
 export const runtime = 'nodejs';
@@ -10,19 +12,12 @@ export const runtime = 'nodejs';
 //   GET   /api/trips                                    → list (newest first)
 //   POST  /api/trips  { location, startDate, endDate }  → create
 
-const TRIP_COLS = 'id, location, start_date, end_date, created_at, seen_at';
-
-async function ownerAccountId(userId: string) {
-  const admin = createAdminClient();
-  const { data } = await admin.from('accounts').select('id').eq('user_id', userId).maybeSingle();
-  return data?.id ?? null;
-}
 
 export async function GET() {
   const auth = await requireUser();
   if (auth instanceof NextResponse) return auth;
 
-  const accountId = await ownerAccountId(auth.user.id);
+  const accountId = await callerAccountId(auth.user.id);
   if (!accountId) return NextResponse.json({ trips: [] });
 
   const admin = createAdminClient();
@@ -55,7 +50,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'End date is before start date' }, { status: 400 });
   }
 
-  const accountId = await ownerAccountId(auth.user.id);
+  const accountId = await callerAccountId(auth.user.id);
   if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 400 });
 
   const admin = createAdminClient();

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireUser } from '@/lib/supabase/auth';
-import { ensureCallerFamily } from '@/lib/supabase/family';
+import { ensureCallerFamily, findPendingInvite } from '@/lib/supabase/family';
 
 export const runtime = 'nodejs';
 
@@ -24,17 +24,10 @@ export async function POST() {
   try {
     const admin = createAdminClient();
 
-    const { data: invite } = await admin
-      .from('family_invites')
-      .select('id, family_id')
-      .eq('email', email)
-      .neq('family_id', caller.familyId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const invite = await findPendingInvite(email, caller.familyId);
     if (!invite) return NextResponse.json({ error: 'No pending invite' }, { status: 404 });
 
-    const target = invite.family_id as string;
+    const target = invite.family_id;
     const oldFamily = caller.familyId;
 
     const { count: oldCount } = await admin

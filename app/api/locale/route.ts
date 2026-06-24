@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireUser } from '@/lib/supabase/auth';
+import { callerAccountId } from '@/lib/supabase/family';
 import { isLocale } from '@/lib/i18n';
 
 export const runtime = 'nodejs';
@@ -22,18 +23,14 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    const admin = createAdminClient();
-    const { data: account } = await admin
-      .from('accounts')
-      .select('id')
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
-    if (!account) return NextResponse.json({ error: 'No account' }, { status: 400 });
+    const accountId = await callerAccountId(auth.user.id);
+    if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 400 });
 
+    const admin = createAdminClient();
     const { error } = await admin
       .from('accounts')
       .update({ locale: body.locale })
-      .eq('id', account.id);
+      .eq('id', accountId);
     if (error) throw error;
 
     return NextResponse.json({ ok: true });

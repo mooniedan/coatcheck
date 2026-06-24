@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
+import { callerAccountId } from '@/lib/supabase/family';
 import { normalizeLocation } from '@/lib/location';
 
 export const runtime = 'nodejs';
@@ -37,18 +38,14 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    const admin = createAdminClient();
-    const { data: account } = await admin
-      .from('accounts')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 });
+    const accountId = await callerAccountId(user.id);
+    if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 404 });
 
+    const admin = createAdminClient();
     const { error } = await admin
       .from('accounts')
       .update({ home_location: home })
-      .eq('id', account.id);
+      .eq('id', accountId);
     if (error) throw error;
 
     return NextResponse.json({ ok: true, home_location: home });

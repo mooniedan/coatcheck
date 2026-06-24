@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveAccess } from '@/lib/supabase/auth';
-import { ensureCallerFamily, profileScopeFilter } from '@/lib/supabase/family';
+import { ensureCallerFamily, profileScopeFilter, findPendingInvite } from '@/lib/supabase/family';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
 
 export const runtime = 'nodejs';
@@ -88,17 +88,11 @@ export async function GET() {
       .or(caller ? profileScopeFilter(caller) : `account_id.eq.${account!.id}`)
       .order('created_at', { ascending: true });
 
-    // Surface a pending family invite for this email (to a family they're not yet in).
+    // Surface a pending family invite for this email (to a family they're not yet in),
+    // enriched with the inviter's email for the "X invited you" label.
     let pendingFamilyInvite = null;
     if (caller && user.email) {
-      const { data: inv } = await admin
-        .from('family_invites')
-        .select('family_id, invited_by')
-        .eq('email', user.email.toLowerCase())
-        .neq('family_id', caller.familyId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const inv = await findPendingInvite(user.email, caller.familyId);
       if (inv) {
         let invited_by_email: string | null = null;
         if (inv.invited_by) {
@@ -113,12 +107,14 @@ export async function GET() {
       }
     }
 
-    if (profiles && profiles.length === 0) {
+    // Ensure a default "self" profile exists, then return one consolidated response.
+    let profileList = profiles ?? [];
+    if (profileList.length === 0) {
       const name =
         (user.user_metadata?.full_name as string | undefined) ??
         user.email?.split('@')[0] ??
         'Me';
-      const created = await admin
+      const { data: created } = await admin
         .from('profiles')
         .insert({
           account_id: account!.id,
@@ -128,19 +124,13 @@ export async function GET() {
         })
         .select('id, display_name, relationship, comfort_model')
         .single();
-      return NextResponse.json({
-        user: { id: user.id, email: user.email, role },
-        account: accountWithHome,
-        profiles: created.data ? [created.data] : [],
-        status: 'active',
-        pendingFamilyInvite,
-      });
+      profileList = created ? [created] : [];
     }
 
     return NextResponse.json({
       user: { id: user.id, email: user.email, role },
       account: accountWithHome,
-      profiles: profiles ?? [],
+      profiles: profileList,
       status: 'active',
       pendingFamilyInvite,
     });
