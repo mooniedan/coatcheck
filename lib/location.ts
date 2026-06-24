@@ -20,9 +20,12 @@ export function normalizeLocation(input: unknown): ResolvedLocation | null {
   };
 }
 
-// Validate an ISO date string (YYYY-MM-DD) that denotes a real calendar date.
+// Validate an ISO date string (YYYY-MM-DD) that denotes a real calendar date. Built from UTC
+// parts so it's timezone-independent — a local-time round-trip through toISOString() would shift
+// the date by a day in any non-UTC offset and reject valid input.
 export function isValidIsoDate(s: unknown): s is string {
   if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const d = new Date(`${s}T00:00:00`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+  const [y, m, d] = s.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
 }

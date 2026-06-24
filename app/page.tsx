@@ -7,7 +7,6 @@ import CitySearch from '@/components/CitySearch';
 import AnimatedHome from '@/components/home/AnimatedHome';
 import WeekStrip from '@/components/home/WeekStrip';
 import DayItems from '@/components/home/DayItems';
-import DayIconStrip from '@/components/home/DayIconStrip';
 import { dayLabel } from '@/components/home/weekday';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES } from '@/lib/types';
@@ -281,6 +280,10 @@ export default function Home() {
           selectedDay === 0 ? rec : (week[selectedDay]?.recommendation ?? rec);
         return (
         <div ref={resultsRef} className="flex scroll-mt-4 flex-col gap-3">
+          {week.length > 0 && (
+            <WeekStrip week={week} selectedIndex={selectedDay} onSelect={setSelectedDay} />
+          )}
+          {/* Scene/List toggle + Set-as-home, between the days and the content. */}
           {(week.length > 0 || isTester) && (
             <div className="flex items-center justify-between gap-2">
               {week.length > 0 ? (
@@ -323,9 +326,6 @@ export default function Home() {
             </div>
           )}
           {homeMsg && <p className="text-xs text-on-surface-variant">{homeMsg}</p>}
-          {week.length > 0 && (
-            <WeekStrip week={week} selectedIndex={selectedDay} onSelect={setSelectedDay} />
-          )}
           {view === 'list' ? (
             <DayItems
               rec={selectedRec}
@@ -336,19 +336,16 @@ export default function Home() {
               }
             />
           ) : (
-            <>
-              <DayIconStrip rec={selectedRec} />
-              <AnimatedHome
-                location={location}
-                rec={selectedRec}
-                day={week[selectedDay]?.day ?? null}
-                comfortOffsetC={comfortOffsetC}
-                isToday={selectedDay === 0}
-                signedIn={isTester}
-                onFeedback={sendFeedback}
-                feedbackMsg={feedbackMsg}
-              />
-            </>
+            <AnimatedHome
+              location={location}
+              rec={selectedRec}
+              day={week[selectedDay]?.day ?? null}
+              comfortOffsetC={comfortOffsetC}
+              isToday={selectedDay === 0}
+              signedIn={isTester}
+              onFeedback={sendFeedback}
+              feedbackMsg={feedbackMsg}
+            />
           )}
         </div>
         );
