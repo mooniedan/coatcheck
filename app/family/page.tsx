@@ -88,8 +88,30 @@ export default function FamilyPage() {
     }
     setInviteEmail('');
     setInviteMsg(`Invited ${email}. They join when they sign in with that email.`);
+    await refreshFamily();
+  }
+
+  async function refreshFamily() {
     const fam = await fetch('/api/family');
     if (fam.ok) setFamily((await fam.json()) as FamilyResponse);
+  }
+
+  async function cancelInvite(id: string) {
+    const res = await fetch(`/api/family/invite?id=${id}`, { method: 'DELETE' });
+    if (res.ok) await refreshFamily();
+  }
+
+  async function removeMember(accountId: string) {
+    setError(null);
+    const res = await fetch(`/api/family/members?accountId=${accountId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const d = (await res.json()) as ApiError;
+      setError(d.error ?? 'Could not update members');
+      return;
+    }
+    await refreshFamily();
+    const prof = await fetch('/api/profiles');
+    if (prof.ok) setProfiles(((await prof.json()) as ProfilesResponse).profiles ?? []);
   }
 
   const signedOut = loaded && family === null && profiles.length === 0;
@@ -127,19 +149,42 @@ export default function FamilyPage() {
               </div>
 
               <ul className="flex flex-col gap-2">
-                {family.members.map((m) => (
-                  <li
-                    key={m.account_id}
-                    className="flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface px-4 py-3"
-                  >
-                    <Icon name="pin" size={16} color="var(--md-primary)" />
-                    <span className="min-w-0 flex-1 truncate text-on-surface">{m.email ?? '—'}</span>
-                    {m.is_self && <span className="text-xs text-on-surface-variant">you</span>}
-                    <span className="rounded-full bg-secondary-container px-2.5 py-0.5 text-xs font-medium capitalize text-on-secondary-container">
-                      {m.role}
-                    </span>
-                  </li>
-                ))}
+                {family.members.map((m) => {
+                  const canLeave = m.is_self && family.members.length > 1;
+                  const canRemove = !m.is_self && family.role === 'owner';
+                  return (
+                    <li
+                      key={m.account_id}
+                      className="flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface px-4 py-3"
+                    >
+                      <Icon name="pin" size={16} color="var(--md-primary)" />
+                      <span className="min-w-0 flex-1 truncate text-on-surface">
+                        {m.email ?? '—'}
+                      </span>
+                      {m.is_self && <span className="text-xs text-on-surface-variant">you</span>}
+                      <span className="rounded-full bg-secondary-container px-2.5 py-0.5 text-xs font-medium capitalize text-on-secondary-container">
+                        {m.role}
+                      </span>
+                      {canLeave && (
+                        <button
+                          onClick={() => removeMember(m.account_id)}
+                          className="rounded-full px-3 py-1 text-xs font-medium text-on-surface-variant transition-colors hover:bg-surface-high hover:text-error"
+                        >
+                          Leave
+                        </button>
+                      )}
+                      {canRemove && (
+                        <button
+                          onClick={() => removeMember(m.account_id)}
+                          aria-label={`Remove ${m.email ?? 'member'}`}
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-high hover:text-error"
+                        >
+                          <Icon name="close" size={16} strokeWidth={2} />
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
                 {family.invites.map((i) => (
                   <li
                     key={i.id}
@@ -150,6 +195,13 @@ export default function FamilyPage() {
                       {i.email}
                     </span>
                     <span className="text-xs text-on-surface-variant">pending</span>
+                    <button
+                      onClick={() => cancelInvite(i.id)}
+                      aria-label={`Cancel invite to ${i.email}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-high hover:text-error"
+                    >
+                      <Icon name="close" size={16} strokeWidth={2} />
+                    </button>
                   </li>
                 ))}
               </ul>

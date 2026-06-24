@@ -74,3 +74,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Could not send invite' }, { status: 500 });
   }
 }
+
+// DELETE /api/family/invite?id=... — cancel a pending invite (any member of its family).
+// Leaves the email's app-access allowlist untouched (revoking beta access is a separate concern).
+export async function DELETE(request: NextRequest) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+  const caller = await ensureCallerFamily(auth.user.id);
+  if (!caller) return NextResponse.json({ error: 'No account' }, { status: 400 });
+
+  const id = new URL(request.url).searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from('family_invites')
+    .delete()
+    .eq('id', id)
+    .eq('family_id', caller.familyId);
+  if (error) {
+    console.error('DELETE /api/family/invite failed:', error);
+    return NextResponse.json({ error: 'Could not cancel invite' }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}
