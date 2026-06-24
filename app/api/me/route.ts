@@ -54,6 +54,20 @@ export async function GET() {
       account = inserted.data;
     }
 
+    // Best-effort: fold in the saved home location. Done as a separate select so a not-yet-
+    // migrated database (no home_location column) degrades to "no home" rather than failing
+    // the whole account lookup.
+    let home_location = null;
+    {
+      const { data: home } = await admin
+        .from('accounts')
+        .select('home_location')
+        .eq('id', account!.id)
+        .maybeSingle();
+      home_location = home?.home_location ?? null;
+    }
+    const accountWithHome = { ...account!, home_location };
+
     // Ensure a default profile exists.
     const { data: profiles } = await admin
       .from('profiles')
@@ -73,7 +87,7 @@ export async function GET() {
         .single();
       return NextResponse.json({
         user: { id: user.id, email: user.email, role },
-        account,
+        account: accountWithHome,
         profiles: created.data ? [created.data] : [],
         status: 'active',
       });
@@ -81,7 +95,7 @@ export async function GET() {
 
     return NextResponse.json({
       user: { id: user.id, email: user.email, role },
-      account,
+      account: accountWithHome,
       profiles: profiles ?? [],
       status: 'active',
     });

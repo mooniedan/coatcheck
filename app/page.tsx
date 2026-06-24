@@ -7,6 +7,7 @@ import CitySearch from '@/components/CitySearch';
 import AnimatedHome from '@/components/home/AnimatedHome';
 import WeekStrip from '@/components/home/WeekStrip';
 import DayItems from '@/components/home/DayItems';
+import DayIconStrip from '@/components/home/DayIconStrip';
 import { dayLabel } from '@/components/home/weekday';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES } from '@/lib/types';
@@ -39,6 +40,13 @@ export default function Home() {
   const [waitlisted, setWaitlisted] = useState(false); // signed in but not yet invited
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Saved "home" location (the open-on-launch fallback when GPS isn't readable) + a once-guard
+  // so the auto-load runs a single time after /api/me resolves.
+  const [homeLocation, setHomeLocation] = useState<ResolvedLocation | null>(null);
+  const [homeMsg, setHomeMsg] = useState<string | null>(null);
+  const [meReady, setMeReady] = useState(false);
+  const autoLoadedRef = useRef(false);
+
   // When a new location's results load, scroll the forecast strip to the top of the viewport
   // so the 7-day strip + animated card are immediately in view (esp. on mobile).
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -58,8 +66,10 @@ export default function Home() {
         setIsAdmin(data.user?.role === 'admin' || data.user?.role === 'superadmin');
         setProfiles(data.profiles ?? []);
         if (data.profiles?.length) setActiveProfile(data.profiles[0].id);
+        setHomeLocation(data.account?.home_location ?? null);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setMeReady(true));
   }, []);
 
   // `displayLocation` lets a picked autocomplete result drive the header label even though we
@@ -108,6 +118,54 @@ export default function Home() {
       (pos) => fetchRecommendation(`lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`),
       () => setError('Could not get your location')
     );
+  }
+
+  // Auto-load on open (testers only): prefer the device's current location, and fall back to the
+  // saved home when GPS is denied/unavailable. Runs once, after /api/me resolves, and never
+  // overrides a location the visitor already searched in the brief window before then.
+  useEffect(() => {
+    if (!meReady || autoLoadedRef.current) return;
+    autoLoadedRef.current = true;
+    if (!isTester || location) return;
+    const loadHome = () => {
+      if (homeLocation) pickLocation(homeLocation);
+    };
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => fetchRecommendation(`lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`),
+        loadHome,
+        { timeout: 8000 }
+      );
+    } else {
+      loadHome();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meReady]);
+
+  // Is the place currently shown the saved home? (coarse coordinate match)
+  const isHome = Boolean(
+    location &&
+      homeLocation &&
+      Math.abs(location.latitude - homeLocation.latitude) < 1e-4 &&
+      Math.abs(location.longitude - homeLocation.longitude) < 1e-4
+  );
+
+  // Pin the current place as home, or clear it when it's already home.
+  async function toggleHome() {
+    if (!location) return;
+    const next = isHome ? null : location;
+    setHomeLocation(next); // optimistic
+    const res = await fetch('/api/home', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ location: next }),
+    });
+    if (res.ok) {
+      setHomeMsg(next ? 'Saved as your home.' : 'Home cleared.');
+    } else {
+      setHomeLocation(isHome ? location : null); // revert
+      setHomeMsg('Could not save home.');
+    }
   }
 
   async function sendFeedback(verdict: Verdict, wornItemIds?: string[]) {
@@ -217,33 +275,60 @@ export default function Home() {
         <p className="rounded-2xl bg-error-container px-4 py-3 text-on-error-container">{error}</p>
       )}
 
-      {rec && location && !loading && (
+      {rec && location && !loading && (() => {
+        // The recommendation for the day the strip has selected (today = the live `rec`).
+        const selectedRec =
+          selectedDay === 0 ? rec : (week[selectedDay]?.recommendation ?? rec);
+        return (
         <div ref={resultsRef} className="flex scroll-mt-4 flex-col gap-3">
-          {week.length > 0 && (
-            <div className="inline-flex self-start rounded-full border border-outline-variant bg-surface-low p-0.5">
-              {(['scene', 'list'] as const).map((v) => (
+          {(week.length > 0 || isTester) && (
+            <div className="flex items-center justify-between gap-2">
+              {week.length > 0 ? (
+                <div className="inline-flex rounded-full border border-outline-variant bg-surface-low p-0.5">
+                  {(['scene', 'list'] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={view === v}
+                      onClick={() => setView(v)}
+                      className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                        view === v
+                          ? 'bg-secondary-container text-on-secondary-container'
+                          : 'text-on-surface-variant hover:bg-surface-high'
+                      }`}
+                    >
+                      {v === 'scene' ? 'Scene' : 'List'}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <span />
+              )}
+              {isTester && (
                 <button
-                  key={v}
                   type="button"
-                  aria-pressed={view === v}
-                  onClick={() => setView(v)}
-                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                    view === v
-                      ? 'bg-secondary-container text-on-secondary-container'
-                      : 'text-on-surface-variant hover:bg-surface-high'
+                  onClick={toggleHome}
+                  aria-pressed={isHome}
+                  title={isHome ? 'This is your home — tap to clear' : 'Set as your home location'}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    isHome
+                      ? 'border-transparent bg-secondary-container text-on-secondary-container'
+                      : 'border-outline-variant text-on-surface-variant hover:bg-surface-high'
                   }`}
                 >
-                  {v === 'scene' ? 'Scene' : 'List'}
+                  <Icon name="pin" size={15} color={isHome ? 'currentColor' : 'var(--md-primary)'} />
+                  {isHome ? 'Home' : 'Set as home'}
                 </button>
-              ))}
+              )}
             </div>
           )}
+          {homeMsg && <p className="text-xs text-on-surface-variant">{homeMsg}</p>}
           {week.length > 0 && (
             <WeekStrip week={week} selectedIndex={selectedDay} onSelect={setSelectedDay} />
           )}
           {view === 'list' ? (
             <DayItems
-              rec={selectedDay === 0 ? rec : (week[selectedDay]?.recommendation ?? rec)}
+              rec={selectedRec}
               day={week[selectedDay]?.day ?? null}
               location={location}
               label={
@@ -251,19 +336,23 @@ export default function Home() {
               }
             />
           ) : (
-            <AnimatedHome
-              location={location}
-              rec={selectedDay === 0 ? rec : (week[selectedDay]?.recommendation ?? rec)}
-              day={week[selectedDay]?.day ?? null}
-              comfortOffsetC={comfortOffsetC}
-              isToday={selectedDay === 0}
-              signedIn={isTester}
-              onFeedback={sendFeedback}
-              feedbackMsg={feedbackMsg}
-            />
+            <>
+              <DayIconStrip rec={selectedRec} />
+              <AnimatedHome
+                location={location}
+                rec={selectedRec}
+                day={week[selectedDay]?.day ?? null}
+                comfortOffsetC={comfortOffsetC}
+                isToday={selectedDay === 0}
+                signedIn={isTester}
+                onFeedback={sendFeedback}
+                feedbackMsg={feedbackMsg}
+              />
+            </>
           )}
         </div>
-      )}
+        );
+      })()}
     </main>
   );
 }

@@ -128,6 +128,8 @@ export interface Account {
   id: string;
   email: string | null;
   cohort: Cohort;
+  /** The account's saved "home" location — the open-on-launch fallback when GPS isn't readable. */
+  home_location?: ResolvedLocation | null;
 }
 
 export interface ApiError {
