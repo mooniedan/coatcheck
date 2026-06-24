@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 //   GET   /api/trips                                    → list (newest first)
 //   POST  /api/trips  { location, startDate, endDate }  → create
 
-const TRIP_COLS = 'id, location, start_date, end_date, created_at';
+const TRIP_COLS = 'id, location, start_date, end_date, created_at, seen_at';
 
 async function ownerAccountId(userId: string) {
   const admin = createAdminClient();

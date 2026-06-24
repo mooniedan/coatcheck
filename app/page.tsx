@@ -8,6 +8,7 @@ import AnimatedHome from '@/components/home/AnimatedHome';
 import WeekStrip from '@/components/home/WeekStrip';
 import DayItems from '@/components/home/DayItems';
 import { dayLabel } from '@/components/home/weekday';
+import { isoDate, tripsAlertCount } from '@/components/trip/dates';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES } from '@/lib/types';
 import type {
@@ -18,6 +19,7 @@ import type {
   Recommendation,
   RecommendationsResponse,
   ResolvedLocation,
+  TripsResponse,
   Verdict,
 } from '@/lib/types';
 
@@ -45,6 +47,18 @@ export default function Home() {
   const [homeMsg, setHomeMsg] = useState<string | null>(null);
   const [meReady, setMeReady] = useState(false);
   const autoLoadedRef = useRef(false);
+
+  // Trips-nav badge: how many saved trips just became forecastable (and haven't been opened).
+  const [tripsAlert, setTripsAlert] = useState(0);
+  useEffect(() => {
+    if (!isTester) return;
+    fetch('/api/trips')
+      .then((r) => r.json() as Promise<TripsResponse | ApiError>)
+      .then((d) => {
+        if (!('error' in d)) setTripsAlert(tripsAlertCount(d.trips, isoDate(new Date())));
+      })
+      .catch(() => {});
+  }, [isTester]);
 
   // When a new location's results load, scroll the forecast strip to the top of the viewport
   // so the 7-day strip + animated card are immediately in view (esp. on mobile).
@@ -201,8 +215,19 @@ export default function Home() {
               Admin
             </Link>
           )}
-          <Link href="/trips" className="text-sm font-medium text-primary hover:underline">
+          <Link
+            href="/trips"
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
             Trips
+            {tripsAlert > 0 && (
+              <span
+                aria-label={`${tripsAlert} trip${tripsAlert === 1 ? '' : 's'} with new weather`}
+                className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-on-primary"
+              >
+                {tripsAlert}
+              </span>
+            )}
           </Link>
           {profiles.length > 0 && (
             <Link href="/family" className="text-sm font-medium text-primary hover:underline">

@@ -3,12 +3,12 @@
 // A single saved trip: edit its place + date range, and see the day-by-day packing list.
 // The day cards update live as you edit; "Save changes" persists the edits to the account.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import CitySearch from '@/components/CitySearch';
 import TripDays from '@/components/trip/TripDays';
-import { isoDate, addDays, TRIP_HORIZON_DAYS } from '@/components/trip/dates';
+import { isoDate } from '@/components/trip/dates';
 import { Icon } from '@/components/ui/Icon';
 import type {
   ApiError,
@@ -23,10 +23,7 @@ export default function TripDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
-  const { todayIso, maxIso } = useMemo(() => {
-    const today = new Date();
-    return { todayIso: isoDate(today), maxIso: isoDate(addDays(today, TRIP_HORIZON_DAYS)) };
-  }, []);
+  const todayIso = useMemo(() => isoDate(new Date()), []);
 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'notfound'>('loading');
@@ -97,6 +94,15 @@ export default function TripDetailPage() {
     if (res.ok) router.push('/trips');
   }
 
+  // Once this trip's weather is actually available, mark it seen so the Trips nav badge clears.
+  const markedSeen = useRef(false);
+  function onAvailability(hasAvailableDays: boolean) {
+    if (hasAvailableDays && !markedSeen.current) {
+      markedSeen.current = true;
+      fetch(`/api/trips/${id}/seen`, { method: 'POST' }).catch(() => {});
+    }
+  }
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
       <header className="flex items-center justify-between gap-4">
@@ -142,7 +148,6 @@ export default function TripDetailPage() {
                   type="date"
                   value={start}
                   min={todayIso}
-                  max={maxIso}
                   onChange={(e) => {
                     const v = e.target.value;
                     setStart(v);
@@ -157,7 +162,6 @@ export default function TripDetailPage() {
                   type="date"
                   value={end}
                   min={start}
-                  max={maxIso}
                   onChange={(e) => setEnd(e.target.value)}
                   className="rounded-xl border border-outline-variant bg-surface-lowest px-3 py-2 text-on-surface outline-none focus:border-primary"
                 />
@@ -182,7 +186,12 @@ export default function TripDetailPage() {
           </section>
 
           {/* Day-by-day packing list (live from the working copy) */}
-          <TripDays location={location} start={start} end={end} />
+          <TripDays
+            location={location}
+            start={start}
+            end={end}
+            onAvailability={onAvailability}
+          />
         </>
       )}
     </main>

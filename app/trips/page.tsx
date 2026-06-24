@@ -9,7 +9,7 @@ import Link from 'next/link';
 import CitySearch from '@/components/CitySearch';
 import SignInButton from '@/components/SignInButton';
 import { Icon } from '@/components/ui/Icon';
-import { isoDate, addDays, rangeLabel, TRIP_HORIZON_DAYS } from '@/components/trip/dates';
+import { isoDate, addDays, rangeLabel } from '@/components/trip/dates';
 import type {
   ApiError,
   GeocodeResponse,
@@ -21,10 +21,8 @@ import type {
 } from '@/lib/types';
 
 export default function TripsPage() {
-  const { todayIso, maxIso } = useMemo(() => {
-    const today = new Date();
-    return { todayIso: isoDate(today), maxIso: isoDate(addDays(today, TRIP_HORIZON_DAYS)) };
-  }, []);
+  // Any future date is allowed; the forecast just fills in as dates enter the ~16-day horizon.
+  const todayIso = useMemo(() => isoDate(new Date()), []);
 
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -141,7 +139,6 @@ export default function TripsPage() {
                   type="date"
                   value={start}
                   min={todayIso}
-                  max={maxIso}
                   onChange={(e) => {
                     const v = e.target.value;
                     setStart(v);
@@ -156,7 +153,6 @@ export default function TripsPage() {
                   type="date"
                   value={end}
                   min={start}
-                  max={maxIso}
                   onChange={(e) => setEnd(e.target.value)}
                   className="rounded-xl border border-outline-variant bg-surface-lowest px-3 py-2 text-on-surface outline-none focus:border-primary"
                 />

@@ -2,12 +2,15 @@
 
 // Given a location + an inclusive date range, fetches the forecast (up to 16 days, no hourly)
 // and renders one packing card per day — the same garment-thumbnail card as the home List view.
-// Date filtering is client-side, so changing the range re-renders without refetching; only a
-// location change triggers a new fetch.
+// Dates beyond the forecast horizon are allowed; those are surfaced as a "not available yet"
+// banner rather than blocked. Date filtering is client-side, so changing the range re-renders
+// without refetching; only a location change triggers a new fetch.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DayItems from '@/components/home/DayItems';
 import { dayLabelFull } from '@/components/home/weekday';
+import { isoDate, addDays, rangeLabel } from './dates';
+import { Icon } from '@/components/ui/Icon';
 import type {
   ApiError,
   DayRecommendation,
@@ -19,10 +22,13 @@ export default function TripDays({
   location,
   start,
   end,
+  onAvailability,
 }: {
   location: ResolvedLocation;
   start: string;
   end: string;
+  /** Notified when the available-days status settles (true once any in-range day has a forecast). */
+  onAvailability?: (hasAvailableDays: boolean) => void;
 }) {
   const [week, setWeek] = useState<DayRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,18 +57,31 @@ export default function TripDays({
   }, [location.latitude, location.longitude]);
 
   const days = week.filter((d) => d.day.date >= start && d.day.date <= end);
+  const lastForecast = week.length ? week[week.length - 1].day.date : null;
+
+  // Report availability up to the parent (used to mark a trip "seen" only once its weather lands).
+  const reported = useRef<boolean | null>(null);
+  const hasDays = days.length > 0;
+  useEffect(() => {
+    if (loading) return;
+    if (reported.current === hasDays) return;
+    reported.current = hasDays;
+    onAvailability?.(hasDays);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasDays, loading]);
 
   if (loading) return <p className="text-on-surface-variant">Checking the skies…</p>;
   if (error)
     return (
       <p className="rounded-2xl bg-error-container px-4 py-3 text-on-error-container">{error}</p>
     );
-  if (days.length === 0)
-    return (
-      <p className="rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant">
-        No forecast for those dates yet — pick dates within the next 16 days.
-      </p>
-    );
+
+  // Portion of the range that's past the forecast horizon (no data yet).
+  const tailFrom =
+    lastForecast && end > lastForecast
+      ? isoDate(addDays(new Date(`${lastForecast}T00:00:00`), 1))
+      : null;
+  const unavailableFrom = tailFrom && tailFrom > start ? tailFrom : tailFrom ? start : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -74,6 +93,26 @@ export default function TripDays({
           label={dayLabelFull(d.day.date)}
         />
       ))}
+
+      {unavailableFrom && (
+        <p className="flex items-start gap-2 rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant">
+          <Icon name="clock" size={16} color="var(--md-primary)" strokeWidth={1.8} />
+          <span>
+            {hasDays ? (
+              <>
+                Weather for <span className="font-medium text-on-surface">{rangeLabel(unavailableFrom, end)}</span>{' '}
+                isn’t available yet — we’ll fill in the rest of your packing list as the forecast
+                reaches those dates.
+              </>
+            ) : (
+              <>
+                Weather for this period isn’t available yet (forecasts go ~16 days out). We’ll
+                update your packing list as the forecast reaches those dates.
+              </>
+            )}
+          </span>
+        </p>
+      )}
     </div>
   );
 }

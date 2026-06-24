@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 //   PATCH  /api/trips/[id]  { location?, startDate?, endDate? } → edit fields
 //   DELETE /api/trips/[id]                                   → remove
 
-const TRIP_COLS = 'id, location, start_date, end_date, created_at';
+const TRIP_COLS = 'id, location, start_date, end_date, created_at, seen_at';
 
 async function ownerAccountId(userId: string) {
   const admin = createAdminClient();

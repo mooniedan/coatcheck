@@ -164,6 +164,8 @@ export interface Trip {
   start_date: string;
   end_date: string;
   created_at?: string;
+  /** When the user last opened this trip while its weather was available (drives the nav badge). */
+  seen_at?: string | null;
 }
 
 export interface TripsResponse {
