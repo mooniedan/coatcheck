@@ -6,6 +6,8 @@ import SignInButton from '@/components/SignInButton';
 import CitySearch from '@/components/CitySearch';
 import AnimatedHome from '@/components/home/AnimatedHome';
 import WeekStrip from '@/components/home/WeekStrip';
+import DayItems from '@/components/home/DayItems';
+import { dayLabel } from '@/components/home/weekday';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES } from '@/lib/types';
 import type {
@@ -25,6 +27,7 @@ export default function Home() {
   const [week, setWeek] = useState<DayRecommendation[]>([]);
   const [comfortOffsetC, setComfortOffsetC] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
+  const [view, setView] = useState<'scene' | 'list'>('scene');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -214,18 +217,48 @@ export default function Home() {
       {rec && location && !loading && (
         <div ref={resultsRef} className="flex scroll-mt-4 flex-col gap-3">
           {week.length > 0 && (
+            <div className="inline-flex self-start rounded-full border border-outline-variant bg-surface-low p-0.5">
+              {(['scene', 'list'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={view === v}
+                  onClick={() => setView(v)}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                    view === v
+                      ? 'bg-secondary-container text-on-secondary-container'
+                      : 'text-on-surface-variant hover:bg-surface-high'
+                  }`}
+                >
+                  {v === 'scene' ? 'Scene' : 'List'}
+                </button>
+              ))}
+            </div>
+          )}
+          {week.length > 0 && (
             <WeekStrip week={week} selectedIndex={selectedDay} onSelect={setSelectedDay} />
           )}
-          <AnimatedHome
-            location={location}
-            rec={selectedDay === 0 ? rec : (week[selectedDay]?.recommendation ?? rec)}
-            day={week[selectedDay]?.day ?? null}
-            comfortOffsetC={comfortOffsetC}
-            isToday={selectedDay === 0}
-            signedIn={isTester}
-            onFeedback={sendFeedback}
-            feedbackMsg={feedbackMsg}
-          />
+          {view === 'list' ? (
+            <DayItems
+              rec={selectedDay === 0 ? rec : (week[selectedDay]?.recommendation ?? rec)}
+              day={week[selectedDay]?.day ?? null}
+              location={location}
+              label={
+                week[selectedDay] ? dayLabel(week[selectedDay].day.date, selectedDay) : 'Today'
+              }
+            />
+          ) : (
+            <AnimatedHome
+              location={location}
+              rec={selectedDay === 0 ? rec : (week[selectedDay]?.recommendation ?? rec)}
+              day={week[selectedDay]?.day ?? null}
+              comfortOffsetC={comfortOffsetC}
+              isToday={selectedDay === 0}
+              signedIn={isTester}
+              onFeedback={sendFeedback}
+              feedbackMsg={feedbackMsg}
+            />
+          )}
         </div>
       )}
     </main>

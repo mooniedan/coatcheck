@@ -4,24 +4,10 @@
 // (from the WMO code), the day's high/low, and precip% when notable. Tapping a cell selects
 // that day — the home scene then rests on that day's recommendation (see AnimatedHome).
 
-import { Icon, type IconName } from '@/components/ui/Icon';
-import { weatherGlyph, type GlyphCategory } from '@/lib/wmo';
+import { Icon } from '@/components/ui/Icon';
+import { weatherGlyph } from '@/lib/wmo';
+import { GLYPH_ICON, dayLabel } from './weekday';
 import type { DayRecommendation } from '@/lib/types';
-
-// Map the shared glyph category to this strip's icon set.
-const GLYPH_ICON: Record<GlyphCategory, IconName> = {
-  clear: 'sun',
-  cloud: 'cloud',
-  rain: 'cloudRain',
-  snow: 'snowflake',
-};
-
-// Short weekday label from an ISO date; index 0 is always "Today".
-function labelFor(date: string, index: number): string {
-  if (index === 0) return 'Today';
-  const d = new Date(`${date}T00:00:00`);
-  return d.toLocaleDateString(undefined, { weekday: 'short' });
-}
 
 export default function WeekStrip({
   week,
@@ -42,7 +28,7 @@ export default function WeekStrip({
             key={d.day.date}
             type="button"
             aria-pressed={selected}
-            aria-label={`${labelFor(d.day.date, i)}: ${d.day.description}, high ${Math.round(
+            aria-label={`${dayLabel(d.day.date, i)}: ${d.day.description}, high ${Math.round(
               d.day.tempMaxC
             )}°, low ${Math.round(d.day.tempMinC)}°${
               showPrecip ? `, ${d.day.precipProb}% precipitation` : ''
@@ -54,7 +40,7 @@ export default function WeekStrip({
                 : 'border-outline-variant bg-surface-low text-on-surface-variant hover:bg-surface-high'
             }`}
           >
-            <span className="text-[11px] font-medium leading-none">{labelFor(d.day.date, i)}</span>
+            <span className="text-[11px] font-medium leading-none">{dayLabel(d.day.date, i)}</span>
             <Icon
               name={GLYPH_ICON[weatherGlyph(d.day.weatherCode)]}
               size={20}

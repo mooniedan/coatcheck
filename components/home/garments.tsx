@@ -370,6 +370,65 @@ export function MiniFigure({ garmentId, width = 92 }: { garmentId: string; width
   );
 }
 
+// Gloves on the body are just two dots at the hands; alone they don't read, so the
+// flat-lay view draws a proper pair of mittens instead.
+const GlovesFlat = () => (
+  <g fill="#3D2A1F">
+    <rect x="6" y="10" width="12" height="22" rx="6" />
+    <circle cx="5" cy="18" r="3.4" />
+    <rect x="24" y="10" width="12" height="22" rx="6" />
+    <circle cx="37" cy="18" r="3.4" />
+  </g>
+);
+
+// Per-slot crop window (viewBox) that tightly frames a garment drawn alone (no body),
+// so it can be shown as a flat-lay item scaled to fit a square thumbnail.
+const GARMENT_CROP: Record<string, string> = {
+  torso: '18 62 94 104',
+  legs: '46 126 42 78',
+  head: '42 22 46 34',
+  neck: '38 60 54 44',
+  face: '48 42 34 18',
+  hands: '0 4 42 34',
+  umbrella: '50 -28 96 70',
+};
+
+// Renders a single clothing article ALONE (no figure) — the garment art is body-anchored,
+// so we just omit the body and crop to the garment's region, scaled to fit `size`.
+export function GarmentOnly({ garmentId, size = 56 }: { garmentId: string; size?: number }) {
+  let node: ReactNode = null;
+  let crop = GARMENT_CROP.torso;
+  if (garmentId in TORSO) {
+    const Comp = TORSO[garmentId];
+    node = <Comp anim={STATIC_ANIM} />;
+    crop = GARMENT_CROP.torso;
+  } else if (garmentId in BOTTOMS) {
+    const Comp = BOTTOMS[garmentId];
+    node = <Comp anim={STATIC_ANIM} />;
+    crop = GARMENT_CROP.legs;
+  } else if (garmentId === 'beanie') {
+    node = <Beanie />;
+    crop = GARMENT_CROP.head;
+  } else if (garmentId === 'scarf') {
+    node = <Scarf />;
+    crop = GARMENT_CROP.neck;
+  } else if (garmentId === 'sunglasses') {
+    node = <Sunglasses />;
+    crop = GARMENT_CROP.face;
+  } else if (garmentId === 'gloves') {
+    node = <GlovesFlat />;
+    crop = GARMENT_CROP.hands;
+  } else if (garmentId === 'umbrella') {
+    node = <UmbrellaInline />;
+    crop = GARMENT_CROP.umbrella;
+  }
+  return (
+    <svg viewBox={crop} width={size} height={size} preserveAspectRatio="xMidYMid meet" aria-hidden>
+      {node}
+    </svg>
+  );
+}
+
 // Which slot a catalog id occupies — lets the Wardrobe build a single-garment WornOutfit.
 export function wornForItem(id: string): WornOutfit {
   const base: WornOutfit = {
