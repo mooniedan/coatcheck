@@ -11,6 +11,7 @@ import DayItems from '@/components/home/DayItems';
 import { dayLabelFull } from '@/components/home/weekday';
 import { isoDate, addDays, rangeLabel } from './dates';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/components/I18nProvider';
 import type {
   ApiError,
   DayRecommendation,
@@ -30,6 +31,7 @@ export default function TripDays({
   /** Notified when the available-days status settles (true once any in-range day has a forecast). */
   onAvailability?: (hasAvailableDays: boolean) => void;
 }) {
+  const { t, locale } = useI18n();
   const [week, setWeek] = useState<DayRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export default function TripDays({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasDays, loading]);
 
-  if (loading) return <p className="text-on-surface-variant">Checking the skies…</p>;
+  if (loading) return <p className="text-on-surface-variant">{t('loading')}</p>;
   if (error)
     return (
       <p className="rounded-2xl bg-error-container px-4 py-3 text-on-error-container">{error}</p>
@@ -90,7 +92,7 @@ export default function TripDays({
           key={d.day.date}
           rec={d.recommendation}
           day={d.day}
-          label={dayLabelFull(d.day.date)}
+          label={dayLabelFull(d.day.date, locale)}
         />
       ))}
 
@@ -98,18 +100,9 @@ export default function TripDays({
         <p className="flex items-start gap-2 rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-sm text-on-surface-variant">
           <Icon name="clock" size={16} color="var(--md-primary)" strokeWidth={1.8} />
           <span>
-            {hasDays ? (
-              <>
-                Weather for <span className="font-medium text-on-surface">{rangeLabel(unavailableFrom, end)}</span>{' '}
-                isn’t available yet — we’ll fill in the rest of your packing list as the forecast
-                reaches those dates.
-              </>
-            ) : (
-              <>
-                Weather for this period isn’t available yet (forecasts go ~16 days out). We’ll
-                update your packing list as the forecast reaches those dates.
-              </>
-            )}
+            {hasDays
+              ? t('trip.unavailableSome', { range: rangeLabel(unavailableFrom, end, locale) })
+              : t('trip.unavailableAll')}
           </span>
         </p>
       )}

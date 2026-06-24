@@ -12,6 +12,75 @@ export const en = {
 
   view: { scene: 'Scene', list: 'List' },
 
+  day: { today: 'Today' },
+
+  category: { Tops: 'Tops', Bottoms: 'Bottoms', Outerwear: 'Outerwear', Accessories: 'Accessories' },
+
+  outfit: {
+    layers: '{n} layers',
+    caption: 'What am I wearing?',
+    items: '{n} items',
+    back: 'Back',
+    swap: 'Swap',
+    showLayers: 'Show layers',
+    details: 'Show outfit details',
+    close: 'Close outfit details',
+  },
+
+  comfort: {
+    question: 'What did you wear that felt comfortable?',
+    hint: 'Optional — tells Coat Check what actually felt right ({direction} than suggested) next time it’s like this.',
+    warmer: 'warmer',
+    cooler: 'cooler',
+    save: 'Save',
+    skip: 'Skip',
+  },
+
+  trip: {
+    title: 'Trips',
+    plan: 'Plan a trip',
+    trip: 'Trip',
+    intro: 'Where are you going, and when? You’ll get what to pack for each day.',
+    signIn: 'Sign in to save trips and see them on every device.',
+    addTrip: 'Add a trip',
+    add: 'Add trip',
+    adding: 'Adding…',
+    start: 'Start',
+    end: 'End',
+    pickPlace: 'Pick a place first.',
+    noTrips: 'No trips yet. Add one above.',
+    save: 'Save changes',
+    saving: 'Saving…',
+    saved: 'Saved.',
+    delete: 'Delete trip',
+    notFound: 'This trip isn’t available. It may have been removed, or you’re not signed in.',
+    loading: 'Loading…',
+    home: 'Home',
+    back: 'Trips',
+    unavailableAll: 'Weather for this period isn’t available yet (forecasts go ~16 days out). We’ll update your packing list as the forecast reaches those dates.',
+    unavailableSome: 'Weather for {range} isn’t available yet — we’ll fill in the rest of your packing list as the forecast reaches those dates.',
+  },
+
+  family: {
+    title: 'Family',
+    back: 'Back',
+    signIn: 'Sign in on the home screen to manage your family.',
+    members: 'Members',
+    membersIntro: 'People who can see and update everyone’s profiles. Invite by email — they get access when they sign in with that Google email.',
+    you: 'you',
+    pending: 'pending',
+    invitePlaceholder: 'partner@email.com',
+    invite: 'Invite',
+    invited: 'Invited {email}. They join when they sign in with that email.',
+    leave: 'Leave',
+    dressFor: 'People you dress for',
+    dressForIntro: 'Each person learns their own comfort over time.',
+    namePlaceholder: 'Name',
+    add: 'Add',
+  },
+
+  relationship: { self: 'self', partner: 'partner', child: 'child', other: 'other' },
+
   home: {
     setHome: 'Set as home',
     home: 'Home',

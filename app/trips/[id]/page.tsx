@@ -10,6 +10,7 @@ import CitySearch from '@/components/CitySearch';
 import TripDays from '@/components/trip/TripDays';
 import { isoDate } from '@/components/trip/dates';
 import { Icon } from '@/components/ui/Icon';
+import { useT } from '@/components/I18nProvider';
 import type {
   ApiError,
   GeocodeResponse,
@@ -20,6 +21,7 @@ import type {
 
 export default function TripDetailPage() {
   const router = useRouter();
+  const t = useT();
   const params = useParams<{ id: string }>();
   const id = params.id;
 
@@ -86,7 +88,7 @@ export default function TripDetailPage() {
       return;
     }
     setTrip(data.trip);
-    setMsg('Saved.');
+    setMsg(t('trip.saved'));
   }
 
   async function remove() {
@@ -106,16 +108,18 @@ export default function TripDetailPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-medium tracking-tight text-on-surface sm:text-3xl">Trip</h1>
+        <h1 className="text-2xl font-medium tracking-tight text-on-surface sm:text-3xl">
+          {t('trip.trip')}
+        </h1>
         <Link href="/trips" className="text-sm font-medium text-primary hover:underline">
-          ← Trips
+          ← {t('trip.back')}
         </Link>
       </header>
 
-      {status === 'loading' && <p className="text-on-surface-variant">Loading…</p>}
+      {status === 'loading' && <p className="text-on-surface-variant">{t('trip.loading')}</p>}
       {status === 'notfound' && (
         <p className="rounded-2xl border border-outline-variant bg-surface-low px-5 py-6 text-on-surface-variant">
-          This trip isn’t available. It may have been removed, or you’re not signed in.
+          {t('trip.notFound')}
         </p>
       )}
 
@@ -143,7 +147,7 @@ export default function TripDetailPage() {
             </p>
             <div className="flex flex-wrap items-end gap-4">
               <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-on-surface-variant">Start</span>
+                <span className="font-medium text-on-surface-variant">{t('trip.start')}</span>
                 <input
                   type="date"
                   value={start}
@@ -157,7 +161,7 @@ export default function TripDetailPage() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-on-surface-variant">End</span>
+                <span className="font-medium text-on-surface-variant">{t('trip.end')}</span>
                 <input
                   type="date"
                   value={end}
@@ -172,15 +176,13 @@ export default function TripDetailPage() {
                 disabled={!dirty || saving}
                 className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90 disabled:opacity-40"
               >
-                {saving ? 'Saving…' : 'Save changes'}
+                {saving ? t('trip.saving') : t('trip.save')}
               </button>
               <button
                 type="button"
                 onClick={remove}
                 className="rounded-full px-4 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-high hover:text-error"
-              >
-                Delete trip
-              </button>
+              >{t('trip.delete')}</button>
             </div>
             {msg && <p className="text-sm text-on-surface-variant">{msg}</p>}
           </section>

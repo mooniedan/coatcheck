@@ -7,6 +7,8 @@
 import { Icon } from '@/components/ui/Icon';
 import { weatherGlyph } from '@/lib/wmo';
 import { GLYPH_ICON, dayLabel } from './weekday';
+import { useI18n } from '@/components/I18nProvider';
+import { weatherName } from '@/lib/i18n';
 import type { DayRecommendation } from '@/lib/types';
 
 export default function WeekStrip({
@@ -18,6 +20,8 @@ export default function WeekStrip({
   selectedIndex: number;
   onSelect: (index: number) => void;
 }) {
+  const { t, locale } = useI18n();
+  const label = (date: string, i: number) => dayLabel(date, i, locale, t('day.today'));
   return (
     <div className="grid grid-cols-7 gap-1.5" role="group" aria-label="7-day forecast">
       {week.map((d, i) => {
@@ -28,7 +32,7 @@ export default function WeekStrip({
             key={d.day.date}
             type="button"
             aria-pressed={selected}
-            aria-label={`${dayLabel(d.day.date, i)}: ${d.day.description}, high ${Math.round(
+            aria-label={`${label(d.day.date, i)}: ${weatherName(t, d.day.weatherCode, d.day.description)}, high ${Math.round(
               d.day.tempMaxC
             )}°, low ${Math.round(d.day.tempMinC)}°${
               showPrecip ? `, ${d.day.precipProb}% precipitation` : ''
@@ -40,7 +44,7 @@ export default function WeekStrip({
                 : 'border-outline-variant bg-surface-low text-on-surface-variant hover:bg-surface-high'
             }`}
           >
-            <span className="text-[11px] font-medium leading-none">{dayLabel(d.day.date, i)}</span>
+            <span className="text-[11px] font-medium leading-none">{label(d.day.date, i)}</span>
             <Icon
               name={GLYPH_ICON[weatherGlyph(d.day.weatherCode)]}
               size={20}

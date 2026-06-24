@@ -302,7 +302,7 @@ export default function AnimatedHome({
               setExploded(true);
               setControls(false);
             }}
-            aria-label="Show outfit details"
+            aria-label={tr('outfit.details')}
             style={{
               position: 'absolute',
               left: '50%',
@@ -328,7 +328,7 @@ export default function AnimatedHome({
               setExploded(true);
               setControls(false);
             }}
-            aria-label={`${sceneOutfit.itemCount} items — show layers`}
+            aria-label={tr('outfit.showLayers')}
             className="absolute left-3 top-3 z-[6] inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-xs font-medium text-on-surface shadow-[var(--md-elev-1)] backdrop-blur transition-opacity hover:opacity-90"
           >
             <Icon name="swap" size={14} strokeWidth={2} />
@@ -440,16 +440,11 @@ function ComfortPicker({
   onSkip: () => void;
 }) {
   const tr = useT();
-  const direction = verdict === 'too_cold' ? 'warmer' : 'cooler';
+  const direction = tr(verdict === 'too_cold' ? 'comfort.warmer' : 'comfort.cooler');
   return (
     <div className="mx-5 mb-4 rounded-2xl border border-outline-variant bg-surface-low p-4">
-      <p className="text-sm font-medium text-on-surface">
-        What did you wear that felt comfortable?
-      </p>
-      <p className="mt-0.5 text-xs text-on-surface-variant">
-        Optional — tells Coat Check what actually felt right ({direction} than suggested) next time
-        it&apos;s like this.
-      </p>
+      <p className="text-sm font-medium text-on-surface">{tr('comfort.question')}</p>
+      <p className="mt-0.5 text-xs text-on-surface-variant">{tr('comfort.hint', { direction })}</p>
       <div className="mt-3 flex flex-col gap-3">
         {CATEGORIES.map((cat) => {
           const catItems = DEFAULT_CATALOG.filter((i) => i.category === cat);
@@ -457,7 +452,7 @@ function ComfortPicker({
           return (
             <div key={cat}>
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-primary">
-                {cat}
+                {tr(`category.${cat}`)}
               </p>
               <div className="flex flex-wrap gap-2">
                 {catItems.map((item) => {
@@ -488,14 +483,14 @@ function ComfortPicker({
           onClick={onSkip}
           className="rounded-full px-4 py-2 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-high"
         >
-          Skip
+          {tr('comfort.skip')}
         </button>
         <button
           onClick={onSave}
           disabled={worn.length === 0}
           className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90 disabled:opacity-40"
         >
-          Save
+          {tr('comfort.save')}
         </button>
       </div>
     </div>
@@ -504,6 +499,7 @@ function ComfortPicker({
 
 // ── Exploded outfit overlay — real recommended items splayed out ──
 function ExplodedOutfit({ items, onClose }: { items: ClothingItem[]; onClose: () => void }) {
+  const tr = useT();
   const left = items.filter((_, i) => i % 2 === 0);
   const right = items.filter((_, i) => i % 2 === 1);
   const distribute = (n: number, i: number) => {
@@ -579,13 +575,13 @@ function ExplodedOutfit({ items, onClose }: { items: ClothingItem[]; onClose: ()
           zIndex: 11,
         }}
       >
-        What am I wearing? · {items.length} item{items.length === 1 ? '' : 's'}
+        {tr('outfit.caption')} · {tr('outfit.items', { n: items.length })}
       </div>
 
       {/* Back + close */}
       <button
         onClick={onClose}
-        aria-label="Back to scene"
+        aria-label={tr('outfit.back')}
         style={{
           position: 'absolute',
           top: 12,
@@ -611,7 +607,7 @@ function ExplodedOutfit({ items, onClose }: { items: ClothingItem[]; onClose: ()
       </button>
       <button
         onClick={onClose}
-        aria-label="Close outfit details"
+        aria-label={tr('outfit.close')}
         style={{
           position: 'absolute',
           top: 12,
@@ -688,7 +684,7 @@ function ExpChip({ item, side, y }: { item: ClothingItem; side: 'left' | 'right'
         >{label}</div>
       </div>
       <button
-        aria-label={`Swap ${label}`}
+        aria-label={`${tr('outfit.swap')} ${label}`}
         style={{
           background: 'transparent',
           border: 'none',
@@ -701,7 +697,7 @@ function ExpChip({ item, side, y }: { item: ClothingItem; side: 'left' | 'right'
           flexShrink: 0,
         }}
       >
-        Swap
+        {tr('outfit.swap')}
       </button>
     </div>
   );

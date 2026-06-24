@@ -408,7 +408,9 @@ export default function Home() {
               day={week[selectedDay]?.day ?? null}
               location={location}
               label={
-                week[selectedDay] ? dayLabel(week[selectedDay].day.date, selectedDay) : 'Today'
+                week[selectedDay]
+                  ? dayLabel(week[selectedDay].day.date, selectedDay, locale, t('day.today'))
+                  : t('day.today')
               }
             />
           ) : (

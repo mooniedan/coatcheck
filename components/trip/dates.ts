@@ -2,6 +2,8 @@
 // matching Open-Meteo's free 16-day window (see MAX_FORECAST_DAYS).
 
 import type { Trip } from '@/lib/types';
+import type { Locale } from '@/lib/i18n';
+import { LOCALE_TAG } from '@/components/home/weekday';
 
 export const TRIP_HORIZON_DAYS = 15;
 
@@ -18,9 +20,12 @@ export function addDays(d: Date, n: number): Date {
 }
 
 // Compact range label, e.g. "24 Jun – 30 Jun" (or a single date when start === end).
-export function rangeLabel(start: string, end: string): string {
+export function rangeLabel(start: string, end: string, locale: Locale = 'en'): string {
   const f = (s: string) =>
-    new Date(`${s}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    new Date(`${s}T00:00:00`).toLocaleDateString(LOCALE_TAG[locale], {
+      day: 'numeric',
+      month: 'short',
+    });
   return start === end ? f(start) : `${f(start)} – ${f(end)}`;
 }
 

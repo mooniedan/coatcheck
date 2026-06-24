@@ -10,6 +10,7 @@ import CitySearch from '@/components/CitySearch';
 import SignInButton from '@/components/SignInButton';
 import { Icon } from '@/components/ui/Icon';
 import { isoDate, addDays, rangeLabel } from '@/components/trip/dates';
+import { useI18n } from '@/components/I18nProvider';
 import type {
   ApiError,
   GeocodeResponse,
@@ -21,6 +22,7 @@ import type {
 } from '@/lib/types';
 
 export default function TripsPage() {
+  const { t, locale } = useI18n();
   // Any future date is allowed; the forecast just fills in as dates enter the ~16-day horizon.
   const todayIso = useMemo(() => isoDate(new Date()), []);
 
@@ -70,7 +72,7 @@ export default function TripsPage() {
 
   async function addTrip() {
     if (!pending) {
-      setError('Pick a place first.');
+      setError(t('trip.pickPlace'));
       return;
     }
     setSaving(true);
@@ -100,15 +102,17 @@ export default function TripsPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-medium tracking-tight text-on-surface sm:text-3xl">Trips</h1>
+        <h1 className="text-2xl font-medium tracking-tight text-on-surface sm:text-3xl">
+          {t('trip.title')}
+        </h1>
         <Link href="/" className="text-sm font-medium text-primary hover:underline">
-          ← Home
+          ← {t('trip.home')}
         </Link>
       </header>
 
       {signedIn === false ? (
         <div className="flex flex-col items-start gap-3 rounded-2xl border border-outline-variant bg-surface-low px-5 py-6">
-          <p className="text-on-surface-variant">Sign in to save trips and see them on every device.</p>
+          <p className="text-on-surface-variant">{t('trip.signIn')}</p>
           <SignInButton />
         </div>
       ) : (
@@ -116,7 +120,7 @@ export default function TripsPage() {
           {/* Add a trip */}
           <section className="flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-low p-4">
             <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-primary">
-              Add a trip
+              {t('trip.addTrip')}
             </h2>
             <CitySearch
               onPick={(loc) => {
@@ -134,7 +138,7 @@ export default function TripsPage() {
             )}
             <div className="flex flex-wrap items-end gap-4">
               <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-on-surface-variant">Start</span>
+                <span className="font-medium text-on-surface-variant">{t('trip.start')}</span>
                 <input
                   type="date"
                   value={start}
@@ -148,7 +152,7 @@ export default function TripsPage() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-on-surface-variant">End</span>
+                <span className="font-medium text-on-surface-variant">{t('trip.end')}</span>
                 <input
                   type="date"
                   value={end}
@@ -163,7 +167,7 @@ export default function TripsPage() {
                 disabled={!pending || saving}
                 className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90 disabled:opacity-40"
               >
-                {saving ? 'Adding…' : 'Add trip'}
+                {saving ? t('trip.adding') : t('trip.add')}
               </button>
             </div>
             {error && <p className="text-sm text-error">{error}</p>}
@@ -171,7 +175,7 @@ export default function TripsPage() {
 
           {/* Saved trips */}
           {trips.length === 0 ? (
-            <p className="text-on-surface-variant">No trips yet. Add one above.</p>
+            <p className="text-on-surface-variant">{t('trip.noTrips')}</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {trips.map((trip) => (
@@ -190,7 +194,7 @@ export default function TripsPage() {
                       </span>
                     </span>
                     <span className="shrink-0 text-sm text-on-surface-variant">
-                      {rangeLabel(trip.start_date, trip.end_date)}
+                      {rangeLabel(trip.start_date, trip.end_date, locale)}
                     </span>
                   </Link>
                   <button

@@ -1,3 +1,5 @@
+'use client';
+
 // Single-day clothing summary — the list alternative to the animated scene for the
 // currently selected day. Same data as AnimatedHome (the selected day's recommendation),
 // shown as a flat list of items instead of a scrubbable timeline.
@@ -6,6 +8,8 @@ import { Icon } from '@/components/ui/Icon';
 import { weatherGlyph } from '@/lib/wmo';
 import GarmentThumbs from './GarmentThumbs';
 import { GLYPH_ICON } from './weekday';
+import { useT } from '@/components/I18nProvider';
+import { weatherName } from '@/lib/i18n';
 import type { DailyForecast, Recommendation, ResolvedLocation } from '@/lib/types';
 
 export default function DayItems({
@@ -20,9 +24,10 @@ export default function DayItems({
   location?: ResolvedLocation;
   label: string;
 }) {
+  const t = useT();
   const code = day?.weatherCode ?? rec.weather.weatherCode;
   const precip = day?.precipProb ?? rec.weather.precipitationProbability;
-  const description = day?.description ?? rec.weather.description;
+  const description = weatherName(t, code, day?.description ?? rec.weather.description);
 
   return (
     <div className="rounded-[28px] border border-outline-variant bg-surface p-5 shadow-[var(--md-elev-1)]">

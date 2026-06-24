@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
+import { useT } from '@/components/I18nProvider';
 import type {
   ApiError,
   FamilyResponse,
@@ -19,6 +20,7 @@ function initials(name: string) {
 }
 
 export default function FamilyPage() {
+  const t = useT();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [family, setFamily] = useState<FamilyResponse | null>(null);
   const [name, setName] = useState('');
@@ -87,7 +89,7 @@ export default function FamilyPage() {
       return;
     }
     setInviteEmail('');
-    setInviteMsg(`Invited ${email}. They join when they sign in with that email.`);
+    setInviteMsg(t('family.invited', { email }));
     await refreshFamily();
   }
 
@@ -119,13 +121,13 @@ export default function FamilyPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-medium tracking-tight text-on-surface sm:text-3xl">Family</h1>
+        <h1 className="text-2xl font-medium tracking-tight text-on-surface sm:text-3xl">{t('family.title')}</h1>
         <Link
           href="/"
           className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-surface-high"
         >
           <Icon name="arrowBack" size={16} strokeWidth={2} />
-          Back
+          {t('family.back')}
         </Link>
       </header>
 
@@ -133,7 +135,7 @@ export default function FamilyPage() {
         <p className="text-on-surface-variant">Loading…</p>
       ) : signedOut ? (
         <p className="rounded-2xl border border-outline-variant bg-surface-low px-4 py-3 text-on-surface-variant">
-          Sign in on the home screen to manage your family.
+          {t('family.signIn')}
         </p>
       ) : (
         <>
@@ -141,11 +143,8 @@ export default function FamilyPage() {
           {family && (
             <section className="flex flex-col gap-3">
               <div>
-                <h2 className="text-lg font-medium text-on-surface">Members</h2>
-                <p className="text-sm text-on-surface-variant">
-                  People who can see and update everyone&apos;s profiles. Invite by email — they
-                  get access when they sign in with that Google email.
-                </p>
+                <h2 className="text-lg font-medium text-on-surface">{t('family.members')}</h2>
+                <p className="text-sm text-on-surface-variant">{t('family.membersIntro')}</p>
               </div>
 
               <ul className="flex flex-col gap-2">
@@ -161,7 +160,7 @@ export default function FamilyPage() {
                       <span className="min-w-0 flex-1 truncate text-on-surface">
                         {m.email ?? '—'}
                       </span>
-                      {m.is_self && <span className="text-xs text-on-surface-variant">you</span>}
+                      {m.is_self && <span className="text-xs text-on-surface-variant">{t('family.you')}</span>}
                       <span className="rounded-full bg-secondary-container px-2.5 py-0.5 text-xs font-medium capitalize text-on-secondary-container">
                         {m.role}
                       </span>
@@ -170,7 +169,7 @@ export default function FamilyPage() {
                           onClick={() => removeMember(m.account_id)}
                           className="rounded-full px-3 py-1 text-xs font-medium text-on-surface-variant transition-colors hover:bg-surface-high hover:text-error"
                         >
-                          Leave
+                          {t('family.leave')}
                         </button>
                       )}
                       {canRemove && (
@@ -194,7 +193,7 @@ export default function FamilyPage() {
                     <span className="min-w-0 flex-1 truncate text-on-surface-variant">
                       {i.email}
                     </span>
-                    <span className="text-xs text-on-surface-variant">pending</span>
+                    <span className="text-xs text-on-surface-variant">{t('family.pending')}</span>
                     <button
                       onClick={() => cancelInvite(i.id)}
                       aria-label={`Cancel invite to ${i.email}`}
@@ -211,11 +210,11 @@ export default function FamilyPage() {
                   type="email"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="partner@email.com"
+                  placeholder={t('family.invitePlaceholder')}
                   className="flex-1 rounded-full border border-outline-variant bg-surface-lowest px-5 py-3 text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/70 focus:border-primary"
                 />
                 <button className="rounded-full bg-primary px-6 py-3 font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90">
-                  Invite
+                  {t('family.invite')}
                 </button>
               </form>
               {inviteMsg && <p className="text-sm text-on-surface-variant">{inviteMsg}</p>}
@@ -225,9 +224,9 @@ export default function FamilyPage() {
           {/* ── Profiles: the wearers ── */}
           <section className="flex flex-col gap-3">
             <div>
-              <h2 className="text-lg font-medium text-on-surface">People you dress for</h2>
+              <h2 className="text-lg font-medium text-on-surface">{t('family.dressFor')}</h2>
               <p className="text-sm text-on-surface-variant">
-                Each person learns their own comfort over time.
+                {t('family.dressForIntro')}
               </p>
             </div>
 
@@ -246,7 +245,7 @@ export default function FamilyPage() {
                   <span className="flex flex-1 flex-col">
                     <span className="font-medium text-on-surface">{p.display_name}</span>
                     <span className="text-sm capitalize text-on-surface-variant">
-                      {p.relationship}
+                      {t(`relationship.${p.relationship}`)}
                     </span>
                   </span>
                   {p.relationship !== 'self' && (
@@ -266,7 +265,7 @@ export default function FamilyPage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Name"
+                placeholder={t('family.namePlaceholder')}
                 className="flex-1 rounded-full border border-outline-variant bg-surface-lowest px-5 py-3 text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/70 focus:border-primary"
               />
               <select
@@ -276,12 +275,12 @@ export default function FamilyPage() {
               >
                 {RELATIONSHIPS.filter((r) => r !== 'self').map((r) => (
                   <option key={r} value={r}>
-                    {r}
+                    {t(`relationship.${r}`)}
                   </option>
                 ))}
               </select>
               <button className="rounded-full bg-primary px-6 py-3 font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90">
-                Add
+                {t('family.add')}
               </button>
             </form>
           </section>

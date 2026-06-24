@@ -14,6 +14,75 @@ export const nb: Messages = {
 
   view: { scene: 'Scene', list: 'Liste' },
 
+  day: { today: 'I dag' },
+
+  category: { Tops: 'Overdeler', Bottoms: 'Underdeler', Outerwear: 'Yttertøy', Accessories: 'Tilbehør' },
+
+  outfit: {
+    layers: '{n} lag',
+    caption: 'Hva har jeg på meg?',
+    items: '{n} plagg',
+    back: 'Tilbake',
+    swap: 'Bytt',
+    showLayers: 'Vis lag',
+    details: 'Vis antrekksdetaljer',
+    close: 'Lukk antrekksdetaljer',
+  },
+
+  comfort: {
+    question: 'Hva hadde du på deg som føltes behagelig?',
+    hint: 'Valgfritt – forteller Coat Check hva som faktisk føltes riktig ({direction} enn foreslått) neste gang det er sånn.',
+    warmer: 'varmere',
+    cooler: 'kjøligere',
+    save: 'Lagre',
+    skip: 'Hopp over',
+  },
+
+  trip: {
+    title: 'Turer',
+    plan: 'Planlegg en tur',
+    trip: 'Tur',
+    intro: 'Hvor skal du, og når? Du får vite hva du bør pakke for hver dag.',
+    signIn: 'Logg inn for å lagre turer og se dem på alle enheter.',
+    addTrip: 'Legg til en tur',
+    add: 'Legg til tur',
+    adding: 'Legger til…',
+    start: 'Fra',
+    end: 'Til',
+    pickPlace: 'Velg et sted først.',
+    noTrips: 'Ingen turer ennå. Legg til en over.',
+    save: 'Lagre endringer',
+    saving: 'Lagrer…',
+    saved: 'Lagret.',
+    delete: 'Slett tur',
+    notFound: 'Denne turen er ikke tilgjengelig. Den kan være fjernet, eller du er ikke logget inn.',
+    loading: 'Laster…',
+    home: 'Hjem',
+    back: 'Turer',
+    unavailableAll: 'Været for denne perioden er ikke tilgjengelig ennå (varsler går ca. 16 dager fram). Vi oppdaterer pakkelisten når varselet når disse datoene.',
+    unavailableSome: 'Været for {range} er ikke tilgjengelig ennå – vi fyller ut resten av pakkelisten når varselet når disse datoene.',
+  },
+
+  family: {
+    title: 'Familie',
+    back: 'Tilbake',
+    signIn: 'Logg inn på hjemskjermen for å administrere familien din.',
+    members: 'Medlemmer',
+    membersIntro: 'Personer som kan se og oppdatere alles profiler. Inviter med e-post – de får tilgang når de logger inn med den Google-e-posten.',
+    you: 'deg',
+    pending: 'venter',
+    invitePlaceholder: 'partner@epost.no',
+    invite: 'Inviter',
+    invited: 'Inviterte {email}. De blir med når de logger inn med den e-posten.',
+    leave: 'Forlat',
+    dressFor: 'Personer du kler på',
+    dressForIntro: 'Hver person lærer sin egen komfort over tid.',
+    namePlaceholder: 'Navn',
+    add: 'Legg til',
+  },
+
+  relationship: { self: 'deg selv', partner: 'partner', child: 'barn', other: 'annet' },
+
   home: {
     setHome: 'Angi som hjem',
     home: 'Hjem',
