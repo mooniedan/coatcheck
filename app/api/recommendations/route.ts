@@ -5,6 +5,7 @@ import { DEFAULT_CATALOG } from '@/lib/catalog';
 import { resolveComfort } from '@/lib/thresholds';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { ensureCallerFamily, profileInFamily } from '@/lib/supabase/family';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
 import type { ComfortModel, DailyForecast, DayRecommendation, WeatherSnapshot } from '@/lib/types';
 
@@ -86,16 +87,16 @@ async function resolveComfortForProfile(profileId: string | null): Promise<Comfo
     } = await supabase.auth.getUser();
     if (!user) return resolveComfort(null, null);
 
-    // Service_role read + ownership check (the RLS-bound client can't see `profiles`).
+    // Service_role read + family-membership check (the RLS-bound client can't see `profiles`).
     const admin = createAdminClient();
+    const caller = await ensureCallerFamily(user.id);
     const { data: profile } = await admin
       .from('profiles')
-      .select('comfort_model, accounts!inner(user_id)')
+      .select('comfort_model, family_id, account_id')
       .eq('id', profileId)
       .maybeSingle();
 
-    const account = profile?.accounts as unknown as { user_id: string } | undefined;
-    if (!profile || account?.user_id !== user.id) return resolveComfort(null, null);
+    if (!caller || !profile || !profileInFamily(profile, caller)) return resolveComfort(null, null);
 
     const personal = (profile.comfort_model as ComfortModel | undefined) ?? null;
     return resolveComfort(personal, null);

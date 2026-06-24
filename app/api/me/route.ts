@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveAccess } from '@/lib/supabase/auth';
+import { ensureCallerFamily, profileScopeFilter } from '@/lib/supabase/family';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
 
 export const runtime = 'nodejs';
@@ -68,11 +69,22 @@ export async function GET() {
     }
     const accountWithHome = { ...account!, home_location };
 
-    // Ensure a default profile exists.
+    // Ensure the account has a family (heals accounts provisioned before family sharing) and
+    // backfill any profiles created before the API rework that still have a null family_id.
+    const caller = await ensureCallerFamily(user.id);
+    if (caller) {
+      await admin
+        .from('profiles')
+        .update({ family_id: caller.familyId })
+        .eq('account_id', account!.id)
+        .is('family_id', null);
+    }
+
+    // List the FAMILY's profiles (all members share them — ADR-0001).
     const { data: profiles } = await admin
       .from('profiles')
       .select('id, display_name, relationship, comfort_model')
-      .eq('account_id', account!.id)
+      .or(caller ? profileScopeFilter(caller) : `account_id.eq.${account!.id}`)
       .order('created_at', { ascending: true });
 
     if (profiles && profiles.length === 0) {
@@ -82,7 +94,12 @@ export async function GET() {
         'Me';
       const created = await admin
         .from('profiles')
-        .insert({ account_id: account!.id, display_name: name, relationship: 'self' })
+        .insert({
+          account_id: account!.id,
+          family_id: caller?.familyId,
+          display_name: name,
+          relationship: 'self',
+        })
         .select('id, display_name, relationship, comfort_model')
         .single();
       return NextResponse.json({

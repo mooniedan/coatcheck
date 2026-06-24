@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireUser } from '@/lib/supabase/auth';
+import { ensureCallerFamily, profileInFamily } from '@/lib/supabase/family';
 import { applyFeedback } from '@/lib/thresholds';
 import type { ComfortModel, Verdict, WeatherSnapshot } from '@/lib/types';
 
@@ -33,22 +34,23 @@ export async function POST(request: NextRequest) {
   try {
     const admin = createAdminClient();
 
-    // Verify the profile belongs to the signed-in user's account.
+    // Verify the profile is in the signed-in user's family (ADR-0001).
+    const caller = await ensureCallerFamily(user.id);
     const { data: profile } = await admin
       .from('profiles')
-      .select('id, comfort_model, account_id, accounts!inner(user_id, cohort)')
+      .select('id, comfort_model, family_id, account_id')
       .eq('id', body.profileId)
       .maybeSingle();
 
-    const account = profile?.accounts as unknown as { user_id: string; cohort: string } | undefined;
-    if (!profile || account?.user_id !== user.id) {
+    if (!caller || !profile || !profileInFamily(profile, caller)) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    // Persist the feedback row (cohort denormalized for the Phase 3 aggregation job).
+    // Persist the feedback row (cohort denormalized for the Phase 3 aggregation job — the
+    // recording member's cohort).
     const { error: insertError } = await admin.from('feedback').insert({
       profile_id: body.profileId,
-      cohort: account.cohort,
+      cohort: caller.cohort,
       feels_like_c: body.weather.feelsLikeC,
       conditions: body.weather,
       recommended_item_ids: body.recommendedItemIds ?? [],
