@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
-import type { ResolvedLocation } from '@/lib/types';
+import { normalizeLocation } from '@/lib/location';
 
 export const runtime = 'nodejs';
 
@@ -56,21 +56,4 @@ export async function PUT(request: NextRequest) {
     console.error('PUT /api/home failed:', err);
     return NextResponse.json({ error: 'Could not save home' }, { status: 502 });
   }
-}
-
-function normalizeLocation(input: unknown): ResolvedLocation | null {
-  if (!input || typeof input !== 'object') return null;
-  const o = input as Record<string, unknown>;
-  const latitude = Number(o.latitude);
-  const longitude = Number(o.longitude);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  if (typeof o.name !== 'string' || !o.name) return null;
-  return {
-    name: o.name,
-    latitude,
-    longitude,
-    country: typeof o.country === 'string' ? o.country : undefined,
-    countryCode: typeof o.countryCode === 'string' ? o.countryCode : undefined,
-    admin1: typeof o.admin1 === 'string' ? o.admin1 : undefined,
-  };
 }

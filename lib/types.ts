@@ -156,6 +156,24 @@ export interface RecommendationsResponse {
   comfortOffsetC: number;
 }
 
+/** A saved trip: a place + an inclusive date range. Clothing per day is derived live. */
+export interface Trip {
+  id: string;
+  location: ResolvedLocation;
+  /** Inclusive ISO dates (YYYY-MM-DD). */
+  start_date: string;
+  end_date: string;
+  created_at?: string;
+}
+
+export interface TripsResponse {
+  trips: Trip[];
+}
+
+export interface TripResponse {
+  trip: Trip;
+}
+
 export interface ProfilesResponse {
   profiles: Profile[];
 }
