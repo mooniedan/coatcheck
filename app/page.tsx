@@ -144,6 +144,9 @@ export default function Home() {
               Admin
             </Link>
           )}
+          <Link href="/trip" className="text-sm font-medium text-primary hover:underline">
+            Trip
+          </Link>
           {profiles.length > 0 && (
             <Link href="/family" className="text-sm font-medium text-primary hover:underline">
               Family

@@ -16,7 +16,8 @@ export default function DayItems({
 }: {
   rec: Recommendation;
   day: DailyForecast | null;
-  location: ResolvedLocation;
+  /** Shown as a pin line under the day header. Omit on the trip page (location is in the header). */
+  location?: ResolvedLocation;
   label: string;
 }) {
   const code = day?.weatherCode ?? rec.weather.weatherCode;
@@ -51,9 +52,11 @@ export default function DayItems({
         </span>
       </div>
       <p className="mb-4 inline-flex min-w-0 items-center gap-1.5 text-sm text-on-surface-variant">
-        <Icon name="pin" size={14} color="var(--md-primary)" />
+        {location && <Icon name="pin" size={14} color="var(--md-primary)" />}
         <span className="truncate">
-          {[location.name, location.admin1, location.country].filter(Boolean).join(', ')} · {description}
+          {location
+            ? `${[location.name, location.admin1, location.country].filter(Boolean).join(', ')} · ${description}`
+            : description}
         </span>
       </p>
       <GarmentThumbs rec={rec} label={`Clothing for ${label}`} />

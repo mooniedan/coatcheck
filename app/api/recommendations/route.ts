@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getForecast, resolveLocationFromQuery } from '@/lib/weather';
+import { getForecast, resolveLocationFromQuery, MAX_FORECAST_DAYS } from '@/lib/weather';
 import { recommend } from '@/lib/recommend';
 import { DEFAULT_CATALOG } from '@/lib/catalog';
 import { resolveComfort } from '@/lib/thresholds';
@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
   const lat = searchParams.get('lat');
   const lng = searchParams.get('lng');
   const profileId = searchParams.get('profileId');
+  // Trip planning asks for a longer horizon (up to 16 days); the home page omits `days` (→ 7).
+  const daysParam = Number(searchParams.get('days'));
+  const days = Number.isFinite(daysParam) && daysParam > 0 ? Math.min(daysParam, MAX_FORECAST_DAYS) : 7;
 
   try {
     const location = await resolveLocationFromQuery(q, lat, lng);
@@ -26,7 +29,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: location.error }, { status: location.status });
     }
 
-    const { current, week } = await getForecast(location.latitude, location.longitude);
+    // Hourly data only feeds the scrubbable home scene (≤7 days); trips don't need it.
+    const { current, week } = await getForecast(location.latitude, location.longitude, {
+      days,
+      hourly: days <= 7,
+    });
     const comfort = await resolveComfortForProfile(profileId);
     const recommendation = recommend(current, DEFAULT_CATALOG, comfort);
 

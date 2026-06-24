@@ -236,33 +236,41 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
   return currentToSnapshot(data.current);
 }
 
+/** Open-Meteo's free forecast horizon (today + 15 days). */
+export const MAX_FORECAST_DAYS = 16;
+
 /**
- * Current conditions + a 7-day daily forecast in a single Open-Meteo call. Used by the
- * home page so the "today" recommendation and the week strip share one cached request.
- * Cached for 30 minutes per location.
+ * Current conditions + a daily forecast in a single Open-Meteo call. Used by the home page
+ * (7 days, with hourly data so the scene can scrub) and the trip planner (up to 16 days,
+ * no hourly — the day list doesn't scrub). Cached for 30 minutes per location+params.
  */
 export async function getForecast(
   latitude: number,
-  longitude: number
+  longitude: number,
+  opts: { days?: number; hourly?: boolean } = {}
 ): Promise<{ current: WeatherSnapshot; week: DailyForecast[] }> {
+  const days = Math.min(Math.max(opts.days ?? 7, 1), MAX_FORECAST_DAYS);
+  const withHourly = opts.hourly ?? true;
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),
     current: CURRENT_FIELDS,
     daily: DAILY_FIELDS,
-    hourly: HOURLY_FIELDS,
-    forecast_days: '7',
+    forecast_days: String(days),
     wind_speed_unit: 'kmh',
     timezone: 'auto',
   });
+  // Hourly is only needed for the scrubbable home scene; skip it for long trip ranges to
+  // keep the payload small (16 days × 24h is a lot of points the list never reads).
+  if (withHourly) params.set('hourly', HOURLY_FIELDS);
   const res = await fetch(`${FORECAST_URL}?${params}`, { next: { revalidate: 1_800 } });
   if (!res.ok) throw new Error(`Forecast fetch failed: ${res.status}`);
   const data = (await res.json()) as {
     current: CurrentBlock;
     daily: DailyBlock;
-    hourly: HourlyBlock;
+    hourly?: HourlyBlock;
   };
-  const hoursByDate = hourlyByDate(data.hourly);
+  const hoursByDate = withHourly && data.hourly ? hourlyByDate(data.hourly) : new Map();
   return {
     current: currentToSnapshot(data.current),
     week: dailyToForecast(data.daily, hoursByDate),

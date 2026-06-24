@@ -17,3 +17,10 @@ export function dayLabel(date: string, index: number): string {
   const d = new Date(`${date}T00:00:00`);
   return d.toLocaleDateString(undefined, { weekday: 'short' });
 }
+
+// Absolute date label (e.g. "Mon 24 Jun") — for the trip view, where days aren't relative
+// to today, so "Today/Tue" would be ambiguous across a multi-week range.
+export function dayLabelFull(date: string): string {
+  const d = new Date(`${date}T00:00:00`);
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+}
