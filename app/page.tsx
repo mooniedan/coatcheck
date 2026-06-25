@@ -23,6 +23,17 @@ import type {
   Verdict,
 } from '@/lib/types';
 
+// Geolocation: accept a recent cached fix (instant on repeat opens) and fall back after 4s
+// instead of the browser default (often effectively unbounded) — so a slow/denied sensor
+// can't stall the open-on-launch path.
+const GEO_OPTS: PositionOptions = { timeout: 4000, maximumAge: 600_000 };
+
+// Coarse "same place" test (~1km) so a fresh fix essentially at the saved home keeps the home's
+// nice label instead of swapping to the coordinate path's generic "Your location".
+function nearHome(home: ResolvedLocation, lat: number, lng: number): boolean {
+  return Math.abs(home.latitude - lat) < 0.01 && Math.abs(home.longitude - lng) < 0.01;
+}
+
 export default function Home() {
   const { t, locale } = useI18n();
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
@@ -78,9 +89,12 @@ export default function Home() {
 
   // `displayLocation` lets a picked autocomplete result drive the header label even though we
   // fetch by lat/lng (the coordinate path resolves to a generic "Your location" name).
+  // `silent` (a background swap, e.g. GPS refining the already-painted saved home) skips the
+  // spinner and leaves the current view untouched on failure, so the scene never flashes away.
   const fetchRecommendation = useCallback(
-    async (params: string, displayLocation?: ResolvedLocation) => {
-      setLoading(true);
+    async (params: string, displayLocation?: ResolvedLocation, opts?: { silent?: boolean }) => {
+      const silent = opts?.silent ?? false;
+      if (!silent) setLoading(true);
       setError(null);
       setFeedbackMsg(null);
       try {
@@ -96,11 +110,13 @@ export default function Home() {
         setComfortOffsetC(data.comfortOffsetC ?? 0);
         setSelectedDay(0);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load');
-        setRec(null);
-        setWeek([]);
+        if (!silent) {
+          setError(e instanceof Error ? e.message : 'Failed to load');
+          setRec(null);
+          setWeek([]);
+        }
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     },
     [activeProfile]
@@ -118,31 +134,49 @@ export default function Home() {
       setError('Location is not available in this browser.');
       return;
     }
+    setLoading(true); // feedback while the fix is acquired (not just during the forecast fetch)
     navigator.geolocation.getCurrentPosition(
       (pos) => fetchRecommendation(`lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`),
-      () => setError('Could not get your location')
+      () => {
+        setLoading(false);
+        setError('Could not get your location');
+      },
+      GEO_OPTS
     );
   }
 
-  // Auto-load on open (testers only): prefer the device's current location, and fall back to the
-  // saved home when GPS is denied/unavailable. Runs once, after /api/me resolves, and never
-  // overrides a location the visitor already searched in the brief window before then.
+  // Auto-load on open (testers only). Paint the saved home immediately so the scene appears
+  // without waiting on a GPS fix, then refine to the device's current location in the background
+  // once it resolves. With no saved home, show the spinner while the fix is acquired. Runs once,
+  // after /api/me resolves, and never overrides a location the visitor already searched.
   useEffect(() => {
     if (!meReady || autoLoadedRef.current) return;
     autoLoadedRef.current = true;
     if (!isTester || location) return;
-    const loadHome = () => {
-      if (homeLocation) pickLocation(homeLocation);
-    };
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => fetchRecommendation(`lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`),
-        loadHome,
-        { timeout: 8000 }
-      );
-    } else {
-      loadHome();
-    }
+
+    const home = homeLocation;
+    // Instant first paint from the saved home (if any); `started` lets the GPS swap wait for it
+    // so the two forecast fetches never race.
+    const started = home ? pickLocation(home) : Promise.resolve();
+
+    if (!navigator.geolocation) return;
+    if (!home) setLoading(true); // nothing to paint yet → surface feedback during the fix
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        if (home && nearHome(home, latitude, longitude)) return; // already home — keep its label
+        // Swap to the device location after the home paint settles. Silent when a home is
+        // already shown, so the scene doesn't flash back to a spinner.
+        started.finally(() =>
+          fetchRecommendation(`lat=${latitude}&lng=${longitude}`, undefined, { silent: Boolean(home) })
+        );
+      },
+      () => {
+        if (!home) setLoading(false); // GPS denied and no home to fall back to — stop the spinner
+      },
+      GEO_OPTS
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meReady]);
 

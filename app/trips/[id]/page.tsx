@@ -36,6 +36,7 @@ export default function TripDetailPage() {
   const [end, setEnd] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     fetch(`/api/trips/${id}`)
@@ -178,11 +179,33 @@ export default function TripDetailPage() {
               >
                 {saving ? t('trip.saving') : t('trip.save')}
               </button>
-              <button
-                type="button"
-                onClick={remove}
-                className="rounded-full px-4 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-high hover:text-error"
-              >{t('trip.delete')}</button>
+              {confirming ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-sm text-on-surface-variant">{t('trip.confirmDelete')}</span>
+                  <button
+                    type="button"
+                    onClick={remove}
+                    className="rounded-full bg-error-container px-4 py-2.5 text-sm font-medium text-on-error-container transition-opacity hover:opacity-90"
+                  >
+                    {t('trip.confirm')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(false)}
+                    className="rounded-full px-4 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-high"
+                  >
+                    {t('trip.cancel')}
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirming(true)}
+                  className="rounded-full px-4 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-high hover:text-error"
+                >
+                  {t('trip.delete')}
+                </button>
+              )}
             </div>
             {msg && <p className="text-sm text-on-surface-variant">{msg}</p>}
           </section>

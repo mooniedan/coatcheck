@@ -33,6 +33,19 @@ export default function TripsPage() {
   const [end, setEnd] = useState(isoDate(addDays(new Date(), 6)));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Trip pending a delete confirmation (the X is a two-step action so a trip isn't lost on a stray tap).
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  // Bumped after a successful add to remount CitySearch and clear its internal query text.
+  const [formKey, setFormKey] = useState(0);
+
+  // Only show trips that haven't ended yet; past trips stay saved but out of the way.
+  const upcoming = useMemo(
+    () =>
+      trips
+        .filter((trip) => trip.end_date >= todayIso)
+        .sort((a, b) => a.start_date.localeCompare(b.start_date)),
+    [trips, todayIso]
+  );
 
   useEffect(() => {
     fetch('/api/me')
@@ -89,10 +102,15 @@ export default function TripsPage() {
       return;
     }
     setTrips((t) => [...t, data.trip].sort((a, b) => a.start_date.localeCompare(b.start_date)));
+    // Clear the form for the next trip: place, dates back to the default window, and the search box.
     setPending(null);
+    setStart(todayIso);
+    setEnd(isoDate(addDays(new Date(), 6)));
+    setFormKey((k) => k + 1);
   }
 
   async function removeTrip(id: string) {
+    setConfirmId(null);
     const prev = trips;
     setTrips((t) => t.filter((x) => x.id !== id)); // optimistic
     const res = await fetch(`/api/trips/${id}`, { method: 'DELETE' });
@@ -123,6 +141,7 @@ export default function TripsPage() {
               {t('trip.addTrip')}
             </h2>
             <CitySearch
+              key={formKey}
               onPick={(loc) => {
                 setPending(loc);
                 setError(null);
@@ -173,12 +192,15 @@ export default function TripsPage() {
             {error && <p className="text-sm text-error">{error}</p>}
           </section>
 
-          {/* Saved trips */}
-          {trips.length === 0 ? (
+          {/* Upcoming trips */}
+          <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-primary">
+            {t('trip.upcoming')}
+          </h2>
+          {upcoming.length === 0 ? (
             <p className="text-on-surface-variant">{t('trip.noTrips')}</p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {trips.map((trip) => (
+              {upcoming.map((trip) => (
                 <li
                   key={trip.id}
                   className="flex items-center gap-2 rounded-2xl border border-outline-variant bg-surface"
@@ -197,14 +219,36 @@ export default function TripsPage() {
                       {rangeLabel(trip.start_date, trip.end_date, locale)}
                     </span>
                   </Link>
-                  <button
-                    type="button"
-                    onClick={() => removeTrip(trip.id)}
-                    aria-label={`Remove trip to ${trip.location.name}`}
-                    className="mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-high hover:text-error"
-                  >
-                    <Icon name="close" size={18} strokeWidth={2} />
-                  </button>
+                  {confirmId === trip.id ? (
+                    <span className="mr-2 inline-flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => removeTrip(trip.id)}
+                        aria-label={t('trip.confirm')}
+                        className="inline-flex h-9 items-center gap-1 rounded-full bg-error-container px-3 text-sm font-medium text-on-error-container transition-opacity hover:opacity-90"
+                      >
+                        <Icon name="check" size={16} strokeWidth={2} />
+                        {t('trip.confirm')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmId(null)}
+                        aria-label={t('trip.cancel')}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-high"
+                      >
+                        <Icon name="close" size={18} strokeWidth={2} />
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmId(trip.id)}
+                      aria-label={`Remove trip to ${trip.location.name}`}
+                      className="mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-high hover:text-error"
+                    >
+                      <Icon name="close" size={18} strokeWidth={2} />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
