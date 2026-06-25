@@ -33,6 +33,7 @@ export default function TripDays({
 }) {
   const { t, locale } = useI18n();
   const [week, setWeek] = useState<DayRecommendation[]>([]);
+  const [comfortOffsetC, setComfortOffsetC] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +47,7 @@ export default function TripDays({
         if (cancelled) return;
         if ('error' in data) throw new Error(data.error);
         setWeek(data.week ?? []);
+        setComfortOffsetC(data.comfortOffsetC ?? 0);
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load');
@@ -92,6 +94,7 @@ export default function TripDays({
           key={d.day.date}
           rec={d.recommendation}
           day={d.day}
+          comfortOffsetC={comfortOffsetC}
           label={dayLabelFull(d.day.date, locale)}
         />
       ))}

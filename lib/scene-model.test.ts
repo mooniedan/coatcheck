@@ -15,8 +15,18 @@ import {
   skyTAt,
   isPolarDay,
   isPolarNight,
+  dayClothing,
 } from './scene-model';
-import type { Category, ClothingItem, Recommendation, WeatherSnapshot } from './types';
+import { recommend } from './recommend';
+import { DEFAULT_CATALOG } from './catalog';
+import type {
+  Category,
+  ClothingItem,
+  DailyForecast,
+  HourForecast,
+  Recommendation,
+  WeatherSnapshot,
+} from './types';
 
 function snapshot(over: Partial<WeatherSnapshot>): WeatherSnapshot {
   return {
@@ -250,5 +260,74 @@ describe('outfitFromRecommendation (worn outfit)', () => {
     );
     expect(o.torso).toBe('raincoat');
     expect(o.umbrella).toBe(true);
+  });
+});
+
+describe('dayClothing (comprehensive day list)', () => {
+  function hour(h: number, feelsLikeC: number): HourForecast {
+    return {
+      time: `2026-06-22T${String(h).padStart(2, '0')}:00`,
+      hour: h,
+      feelsLikeC,
+      tempC: feelsLikeC,
+      weatherCode: 0,
+      isRaining: false,
+      precipProb: 0,
+      windKph: 5,
+    };
+  }
+  function day(over: Partial<DailyForecast>): DailyForecast {
+    return {
+      date: '2026-06-22',
+      tempMaxC: 24,
+      tempMinC: 12,
+      feelsLikeMaxC: 24,
+      feelsLikeMinC: 12,
+      precipProb: 0,
+      windMaxKph: 5,
+      weatherCode: 0,
+      description: 'Clear sky',
+      isRaining: false,
+      feelsLikeC: 24,
+      sunrise: '2026-06-22T05:00',
+      sunset: '2026-06-22T22:00',
+      daylightSeconds: 61_200,
+      hours: [],
+      ...over,
+    };
+  }
+
+  it('unions garments across the day’s reachable hours — a warm hour adds shorts', () => {
+    const base = recommend(snapshot({ feelsLikeC: 16 }), DEFAULT_CATALOG); // cool morning, no shorts
+    expect(base.itemsByCategory.Bottoms.map((i) => i.id)).not.toContain('shorts');
+
+    const merged = dayClothing(base, day({ hours: [hour(8, 16), hour(14, 24), hour(20, 15)] }), 0);
+    const bottoms = merged.itemsByCategory.Bottoms.map((i) => i.id);
+    expect(bottoms).toContain('shorts'); // from the 24°C afternoon hour
+    expect(bottoms).toContain('trousers'); // from the cooler hours
+  });
+
+  it('respects the sunrise→sunset window — a warm hour at night is not counted', () => {
+    const base = recommend(snapshot({ feelsLikeC: 16 }), DEFAULT_CATALOG);
+    const d = day({
+      hours: [hour(3, 26), hour(12, 16)],
+      sunrise: '2026-06-22T06:00',
+      sunset: '2026-06-22T21:00',
+      daylightSeconds: 54_000,
+    });
+    expect(dayClothing(base, d, 0).itemsByCategory.Bottoms.map((i) => i.id)).not.toContain('shorts');
+  });
+
+  it('without hourly data, brackets the day by its feels-like extremes', () => {
+    const base = recommend(snapshot({ feelsLikeC: 24 }), DEFAULT_CATALOG); // warm end (shorts)
+    const merged = dayClothing(base, day({ hours: [], feelsLikeMaxC: 24, feelsLikeMinC: 12 }), 0);
+    const bottoms = merged.itemsByCategory.Bottoms.map((i) => i.id);
+    expect(bottoms).toContain('shorts'); // from the 24°C max
+    expect(bottoms).toContain('trousers'); // from the 12°C min
+  });
+
+  it('returns the recommendation unchanged when there is no day data', () => {
+    const base = rec([item('tshirt', 'Tops')]);
+    expect(dayClothing(base, null, 0)).toBe(base);
   });
 });

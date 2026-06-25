@@ -333,6 +333,7 @@ export default function Home() {
               rec={selectedRec}
               day={week[selectedDay]?.day ?? null}
               location={location}
+              comfortOffsetC={comfortOffsetC}
               label={
                 week[selectedDay]
                   ? dayLabel(week[selectedDay].day.date, selectedDay, locale, t('day.today'))

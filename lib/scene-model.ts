@@ -7,7 +7,8 @@
 import { isSnowCode, rainIntensity, type RainIntensity } from './wmo';
 import { recommend } from './recommend';
 import { DEFAULT_CATALOG } from './catalog';
-import type { Recommendation, WeatherSnapshot } from './types';
+import { CATEGORIES } from './types';
+import type { Category, ClothingItem, DailyForecast, Recommendation, WeatherSnapshot } from './types';
 
 // ── Interpolation helpers ──────────────────────────────────────
 export function lerp(a: number, b: number, t: number) {
@@ -168,6 +169,76 @@ export function outfitFromRecommendation(rec: Recommendation): WornOutfit {
     hiddenLayers,
     itemCount,
   };
+}
+
+// ── Comprehensive day clothing (list view) ─────────────────────
+// The scrubbable scene shows a DIFFERENT outfit each hour, so a single day-level recommendation
+// (run at the daytime-high feels-like) misses garments that only suit the day's other hours —
+// e.g. shorts in a warm afternoon when the representative pick is cooler. The list view should
+// therefore show the UNION of every outfit the day produces. With hourly data (home, ≤7 days)
+// we union exactly the hours the slider can reach (the sunrise→sunset window), so the list
+// matches the animation. Without it (trips, >7 days = no hourly) we union the day's feels-like
+// extremes so the packing list still spans the whole day. Returns the day-level rec unchanged
+// when there's no day data. Comfort offset mirrors the one the scene recomputes hours with.
+export function dayClothing(
+  rec: Recommendation,
+  day: DailyForecast | null,
+  comfortOffsetC = 0
+): Recommendation {
+  const snapshots = daySnapshots(day);
+  if (snapshots.length === 0) return rec;
+
+  const byId = new Map<string, ClothingItem>();
+  const absorb = (r: Recommendation) => {
+    for (const c of CATEGORIES) for (const it of r.itemsByCategory[c]) byId.set(it.id, it);
+  };
+  absorb(rec); // keep the representative day-level pick in the union
+  for (const s of snapshots) absorb(recommend(s, DEFAULT_CATALOG, { offsetC: comfortOffsetC }));
+
+  const itemsByCategory = Object.fromEntries(
+    CATEGORIES.map((c) => [c, [] as ClothingItem[]])
+  ) as Record<Category, ClothingItem[]>;
+  for (const it of byId.values()) itemsByCategory[it.category].push(it);
+  // Warmest-first within each category, matching recommend()'s ordering.
+  for (const c of CATEGORIES) itemsByCategory[c].sort((a, b) => a.minTempC - b.minTempC);
+
+  return { ...rec, itemsByCategory };
+}
+
+// The weather snapshots that make up a day: each reachable hour when hourly data is present
+// (the same window the slider scrubs), else the day's feels-like max & min so the union still
+// brackets the day's range for packing.
+function daySnapshots(day: DailyForecast | null): WeatherSnapshot[] {
+  if (!day) return [];
+  if (day.hours.length) {
+    const win = dayWindow(day.sunrise, day.sunset, day.daylightSeconds);
+    return day.hours
+      .filter((h) => h.hour >= win.start && h.hour <= win.end)
+      .map((h) => ({
+        feelsLikeC: h.feelsLikeC,
+        tempC: h.tempC,
+        humidity: 0,
+        windKph: h.windKph,
+        precipitationProbability: h.precipProb,
+        isRaining: h.isRaining,
+        weatherCode: h.weatherCode,
+        description: '',
+        observedAt: h.time,
+      }));
+  }
+  const base = {
+    humidity: 0,
+    windKph: day.windMaxKph,
+    precipitationProbability: day.precipProb,
+    isRaining: day.isRaining,
+    weatherCode: day.weatherCode,
+    description: day.description,
+    observedAt: day.date,
+  };
+  return [
+    { ...base, feelsLikeC: day.feelsLikeMaxC, tempC: day.tempMaxC },
+    { ...base, feelsLikeC: day.feelsLikeMinC, tempC: day.tempMinC },
+  ];
 }
 
 export function celestialAt(t: number) {

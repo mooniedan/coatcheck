@@ -4,8 +4,10 @@
 // currently selected day. Same data as AnimatedHome (the selected day's recommendation),
 // shown as a flat list of items instead of a scrubbable timeline.
 
+import { useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { weatherGlyph } from '@/lib/wmo';
+import { dayClothing } from '@/lib/scene-model';
 import GarmentThumbs from './GarmentThumbs';
 import { GLYPH_ICON } from './weekday';
 import { useT } from '@/components/I18nProvider';
@@ -17,17 +19,27 @@ export default function DayItems({
   day,
   location,
   label,
+  comfortOffsetC = 0,
 }: {
   rec: Recommendation;
   day: DailyForecast | null;
   /** Shown as a pin line under the day header. Omit on the trip page (location is in the header). */
   location?: ResolvedLocation;
   label: string;
+  /** Wearer comfort offset, so the day's clothing union matches the scrubbable scene's hours. */
+  comfortOffsetC?: number;
 }) {
   const t = useT();
   const code = day?.weatherCode ?? rec.weather.weatherCode;
   const precip = day?.precipProb ?? rec.weather.precipitationProbability;
   const description = weatherName(t, code, day?.description ?? rec.weather.description);
+
+  // The list spans the whole day, not just the representative hour — so a garment the scene
+  // only shows at, say, a warm afternoon hour (shorts) still appears here.
+  const dayRec = useMemo(
+    () => dayClothing(rec, day, comfortOffsetC),
+    [rec, day, comfortOffsetC]
+  );
 
   return (
     <div className="rounded-[28px] border border-outline-variant bg-surface p-5 shadow-[var(--md-elev-1)]">
@@ -64,7 +76,7 @@ export default function DayItems({
             : description}
         </span>
       </p>
-      <GarmentThumbs rec={rec} label={`Clothing for ${label}`} />
+      <GarmentThumbs rec={dayRec} label={`Clothing for ${label}`} />
     </div>
   );
 }
