@@ -11,7 +11,6 @@ import { dayLabel } from '@/components/home/weekday';
 import { isoDate, tripsAlertCount } from '@/components/trip/dates';
 import { useI18n } from '@/components/I18nProvider';
 import { useMe } from '@/components/MeProvider';
-import { type Locale, LOCALES } from '@/lib/i18n';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES } from '@/lib/types';
 import type {
@@ -25,7 +24,7 @@ import type {
 } from '@/lib/types';
 
 export default function Home() {
-  const { t, locale, setLocale } = useI18n();
+  const { t, locale } = useI18n();
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [rec, setRec] = useState<Recommendation | null>(null);
   const [week, setWeek] = useState<DayRecommendation[]>([]);
@@ -36,7 +35,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   // Session comes from the shared /api/me (MeProvider) — derived, not re-fetched here.
-  const { me, loading: meLoading, setMe, refresh: refreshMe } = useMe();
+  const { me, loading: meLoading, refresh: refreshMe } = useMe();
   const signedIn = Boolean(me?.user);
   const isTester = me?.status === 'active'; // signed in AND invited (allow-listed)
   const waitlisted = Boolean(me?.user) && me?.status === 'waitlisted';
@@ -48,7 +47,6 @@ export default function Home() {
 
   const [activeProfile, setActiveProfile] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
-  const [homeMsg, setHomeMsg] = useState<string | null>(null);
   const [inviteDismissed, setInviteDismissed] = useState(false);
   const autoLoadedRef = useRef(false);
 
@@ -148,37 +146,6 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meReady]);
 
-  // Is the place currently shown the saved home? (coarse coordinate match)
-  const isHome = Boolean(
-    location &&
-      homeLocation &&
-      Math.abs(location.latitude - homeLocation.latitude) < 1e-4 &&
-      Math.abs(location.longitude - homeLocation.longitude) < 1e-4
-  );
-
-  // Optimistically patch the cached home location (home lives on the shared /api/me payload).
-  const patchHome = (loc: ResolvedLocation | null) => {
-    if (me?.account) setMe({ ...me, account: { ...me.account, home_location: loc } });
-  };
-
-  // Pin the current place as home, or clear it when it's already home.
-  async function toggleHome() {
-    if (!location) return;
-    const next = isHome ? null : location;
-    patchHome(next); // optimistic
-    const res = await fetch('/api/home', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ location: next }),
-    });
-    if (res.ok) {
-      setHomeMsg(next ? t('home.saved') : t('home.cleared'));
-    } else {
-      patchHome(isHome ? location : null); // revert
-      setHomeMsg(t('home.couldNotSave'));
-    }
-  }
-
   // Accept a pending family invite → join the inviting family, then refresh the session.
   async function acceptFamilyInvite() {
     const res = await fetch('/api/family/accept', { method: 'POST' });
@@ -237,23 +204,14 @@ export default function Home() {
               </span>
             )}
           </Link>
-          {profiles.length > 0 && (
-            <Link href="/family" className="text-sm font-medium text-primary hover:underline">
-              {t('nav.family')}
-            </Link>
-          )}
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as Locale)}
-            aria-label={t('language.label')}
-            className="rounded-full border border-outline-variant bg-surface-low px-2 py-1 text-sm font-medium text-on-surface-variant outline-none focus:border-primary"
+          <Link
+            href="/settings"
+            aria-label={t('nav.settings')}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
-            {LOCALES.map((l) => (
-              <option key={l} value={l}>
-                {l.toUpperCase()}
-              </option>
-            ))}
-          </select>
+            <Icon name="settings" size={18} strokeWidth={1.8} />
+            <span className="hidden sm:inline">{t('nav.settings')}</span>
+          </Link>
           <SignInButton />
         </div>
       </header>
@@ -350,49 +308,26 @@ export default function Home() {
           {week.length > 0 && (
             <WeekStrip week={week} selectedIndex={selectedDay} onSelect={setSelectedDay} />
           )}
-          {/* Scene/List toggle + Set-as-home, between the days and the content. */}
-          {(week.length > 0 || isTester) && (
-            <div className="flex items-center justify-between gap-2">
-              {week.length > 0 ? (
-                <div className="inline-flex rounded-full border border-outline-variant bg-surface-low p-0.5">
-                  {(['scene', 'list'] as const).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      aria-pressed={view === v}
-                      onClick={() => setView(v)}
-                      className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                        view === v
-                          ? 'bg-secondary-container text-on-secondary-container'
-                          : 'text-on-surface-variant hover:bg-surface-high'
-                      }`}
-                    >
-                      {v === 'scene' ? t('view.scene') : t('view.list')}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <span />
-              )}
-              {isTester && (
+          {/* Scene/List toggle, between the days and the content. */}
+          {week.length > 0 && (
+            <div className="inline-flex self-start rounded-full border border-outline-variant bg-surface-low p-0.5">
+              {(['scene', 'list'] as const).map((v) => (
                 <button
+                  key={v}
                   type="button"
-                  onClick={toggleHome}
-                  aria-pressed={isHome}
-                  title={isHome ? 'This is your home — tap to clear' : 'Set as your home location'}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                    isHome
-                      ? 'border-transparent bg-secondary-container text-on-secondary-container'
-                      : 'border-outline-variant text-on-surface-variant hover:bg-surface-high'
+                  aria-pressed={view === v}
+                  onClick={() => setView(v)}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                    view === v
+                      ? 'bg-secondary-container text-on-secondary-container'
+                      : 'text-on-surface-variant hover:bg-surface-high'
                   }`}
                 >
-                  <Icon name="pin" size={15} color={isHome ? 'currentColor' : 'var(--md-primary)'} />
-                  {isHome ? t('home.home') : t('home.setHome')}
+                  {v === 'scene' ? t('view.scene') : t('view.list')}
                 </button>
-              )}
+              ))}
             </div>
           )}
-          {homeMsg && <p className="text-xs text-on-surface-variant">{homeMsg}</p>}
           {view === 'list' ? (
             <DayItems
               rec={selectedRec}

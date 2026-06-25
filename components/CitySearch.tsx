@@ -24,10 +24,12 @@ export default function CitySearch({
   onPick,
   onSubmitText,
   onUseMyLocation,
+  submitLabel,
 }: {
   onPick: (loc: ResolvedLocation) => void;
   onSubmitText: (query: string) => void;
   onUseMyLocation: () => void;
+  submitLabel?: string;
 }) {
   const t = useT();
   const [query, setQuery] = useState('');
@@ -183,7 +185,7 @@ export default function CitySearch({
           type="submit"
           className="flex-1 rounded-full bg-primary px-6 py-3 font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90 sm:flex-none"
         >
-          {t('search.check')}
+          {submitLabel ?? t('search.check')}
         </button>
         <button
           type="button"

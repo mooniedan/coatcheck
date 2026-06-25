@@ -4,7 +4,7 @@ export const en = {
   loading: 'Checking the skies…',
   language: { label: 'Language', en: 'English', nb: 'Norsk' },
 
-  nav: { trips: 'Trips', family: 'Family', admin: 'Admin' },
+  nav: { trips: 'Trips', family: 'Family', admin: 'Admin', settings: 'Settings' },
 
   search: { placeholder: 'City or address…', check: 'Check', me: 'Me' },
 
@@ -77,6 +77,19 @@ export const en = {
     dressForIntro: 'Each person learns their own comfort over time.',
     namePlaceholder: 'Name',
     add: 'Add',
+  },
+
+  settings: {
+    title: 'Settings',
+    back: 'Back',
+    signIn: 'Sign in to manage your home location and family.',
+    language: 'Language',
+    languageIntro: 'The language Coat Check uses on every device.',
+    homeLocation: 'Home location',
+    homeLocationIntro: 'Where Coat Check opens to when your device’s location isn’t available.',
+    noHome: 'No home set yet. Search for a place to set one.',
+    setHome: 'Set home',
+    clearHome: 'Clear home',
   },
 
   relationship: { self: 'self', partner: 'partner', child: 'child', other: 'other' },

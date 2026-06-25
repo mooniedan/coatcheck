@@ -6,7 +6,7 @@ export const nb: Messages = {
   loading: 'Sjekker himmelen…',
   language: { label: 'Språk', en: 'English', nb: 'Norsk' },
 
-  nav: { trips: 'Turer', family: 'Familie', admin: 'Admin' },
+  nav: { trips: 'Turer', family: 'Familie', admin: 'Admin', settings: 'Innstillinger' },
 
   search: { placeholder: 'By eller adresse…', check: 'Sjekk', me: 'Meg' },
 
@@ -79,6 +79,19 @@ export const nb: Messages = {
     dressForIntro: 'Hver person lærer sin egen komfort over tid.',
     namePlaceholder: 'Navn',
     add: 'Legg til',
+  },
+
+  settings: {
+    title: 'Innstillinger',
+    back: 'Tilbake',
+    signIn: 'Logg inn for å administrere hjemsted og familie.',
+    language: 'Språk',
+    languageIntro: 'Språket Coat Check bruker på alle enheter.',
+    homeLocation: 'Hjemsted',
+    homeLocationIntro: 'Hvor Coat Check åpner når enhetens posisjon ikke er tilgjengelig.',
+    noHome: 'Ingen hjemsted angitt ennå. Søk etter et sted for å angi ett.',
+    setHome: 'Angi hjem',
+    clearHome: 'Fjern hjemsted',
   },
 
   relationship: { self: 'deg selv', partner: 'partner', child: 'barn', other: 'annet' },
