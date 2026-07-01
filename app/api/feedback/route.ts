@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireUser } from '@/lib/supabase/auth';
 import { ensureCallerFamily, profileInFamily } from '@/lib/supabase/family';
-import { applyFeedback } from '@/lib/thresholds';
+import { applyFeedback, learnFromOutfit } from '@/lib/thresholds';
+import { DEFAULT_CATALOG } from '@/lib/catalog';
 import type { ComfortModel, Verdict, WeatherSnapshot } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -60,9 +61,15 @@ export async function POST(request: NextRequest) {
     if (insertError) throw insertError;
 
     // Nudge the profile's comfort model. Surface a failure here too — otherwise the learned
-    // offset silently never changes while the client is told the feedback was saved.
+    // offset silently never changes while the client is told the feedback was saved. When the
+    // wearer edited the outfit (told us what they'd actually wear), learn from that set — a far
+    // stronger signal than the bare verdict; otherwise fall back to the coarse verdict step.
     const current = (profile.comfort_model as ComfortModel | null) ?? { offsetC: 0 };
-    const updated = applyFeedback(current, body.verdict);
+    const worn = body.wornItemIds ?? [];
+    const updated =
+      worn.length > 0
+        ? learnFromOutfit(current, body.weather, worn, DEFAULT_CATALOG)
+        : applyFeedback(current, body.verdict);
     const { error: updateError } = await admin
       .from('profiles')
       .update({ comfort_model: updated })
