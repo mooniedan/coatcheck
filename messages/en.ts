@@ -27,15 +27,6 @@ export const en = {
     close: 'Close outfit details',
   },
 
-  comfort: {
-    question: 'What did you wear that felt comfortable?',
-    hint: 'Optional — tells Coat Check what actually felt right ({direction} than suggested) next time it’s like this.',
-    warmer: 'warmer',
-    cooler: 'cooler',
-    save: 'Save',
-    skip: 'Skip',
-  },
-
   trip: {
     title: 'Trips',
     plan: 'Plan a trip',

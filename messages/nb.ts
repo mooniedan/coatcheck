@@ -29,15 +29,6 @@ export const nb: Messages = {
     close: 'Lukk antrekksdetaljer',
   },
 
-  comfort: {
-    question: 'Hva hadde du på deg som føltes behagelig?',
-    hint: 'Valgfritt – forteller Coat Check hva som faktisk føltes riktig ({direction} enn foreslått) neste gang det er sånn.',
-    warmer: 'varmere',
-    cooler: 'kjøligere',
-    save: 'Lagre',
-    skip: 'Hopp over',
-  },
-
   trip: {
     title: 'Turer',
     plan: 'Planlegg en tur',
