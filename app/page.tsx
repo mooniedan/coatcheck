@@ -368,6 +368,10 @@ export default function Home() {
               day={week[selectedDay]?.day ?? null}
               location={location}
               comfortOffsetC={comfortOffsetC}
+              signedIn={isTester}
+              isToday={selectedDay === 0}
+              onFeedback={sendFeedback}
+              feedbackMsg={feedbackMsg}
               label={
                 week[selectedDay]
                   ? dayLabel(week[selectedDay].day.date, selectedDay, locale, t('day.today'))

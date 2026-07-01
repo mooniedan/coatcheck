@@ -123,6 +123,8 @@ export const en = {
     todayOnly: 'Feedback applies to today’s outfit.',
     thanks: 'Thanks — noted for next time.',
     couldNotSave: 'Could not save feedback.',
+    adjust: 'Adjust outfit',
+    adjustHint: 'Tap to add or remove clothes, then say how it felt — Coat Check learns what you like.',
   },
 
   clothing: {

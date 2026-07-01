@@ -130,6 +130,8 @@ export const nb: Messages = {
     todayOnly: 'Tilbakemelding gjelder dagens antrekk.',
     thanks: 'Takk – notert til neste gang.',
     couldNotSave: 'Kunne ikke lagre tilbakemelding.',
+    adjust: 'Juster antrekk',
+    adjustHint: 'Trykk for å legge til eller fjerne klær, si så hvordan det føltes – Coat Check lærer hva du liker.',
   },
 
   clothing: {

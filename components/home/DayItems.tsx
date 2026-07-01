@@ -9,10 +9,11 @@ import { Icon } from '@/components/ui/Icon';
 import { weatherGlyph } from '@/lib/wmo';
 import { dayClothing } from '@/lib/scene-model';
 import GarmentThumbs from './GarmentThumbs';
+import OutfitFeedback from './OutfitFeedback';
 import { GLYPH_ICON } from './weekday';
 import { useT } from '@/components/I18nProvider';
 import { weatherName } from '@/lib/i18n';
-import type { DailyForecast, Recommendation, ResolvedLocation } from '@/lib/types';
+import type { DailyForecast, Recommendation, ResolvedLocation, Verdict } from '@/lib/types';
 
 export default function DayItems({
   rec,
@@ -20,6 +21,10 @@ export default function DayItems({
   location,
   label,
   comfortOffsetC = 0,
+  signedIn = false,
+  isToday = false,
+  onFeedback,
+  feedbackMsg,
 }: {
   rec: Recommendation;
   day: DailyForecast | null;
@@ -28,6 +33,11 @@ export default function DayItems({
   label: string;
   /** Wearer comfort offset, so the day's clothing union matches the scrubbable scene's hours. */
   comfortOffsetC?: number;
+  /** Feedback is offered only to a signed-in wearer on today (matches the scene view). */
+  signedIn?: boolean;
+  isToday?: boolean;
+  onFeedback?: (verdict: Verdict, wornItemIds?: string[]) => void;
+  feedbackMsg?: string | null;
 }) {
   const t = useT();
   const code = day?.weatherCode ?? rec.weather.weatherCode;
@@ -77,6 +87,11 @@ export default function DayItems({
         </span>
       </p>
       <GarmentThumbs rec={dayRec} label={`Clothing for ${label}`} />
+      {signedIn && isToday && onFeedback && (
+        <div className="-mx-5 mt-4 border-t border-outline-variant pt-1">
+          <OutfitFeedback rec={rec} onFeedback={onFeedback} message={feedbackMsg} />
+        </div>
+      )}
     </div>
   );
 }

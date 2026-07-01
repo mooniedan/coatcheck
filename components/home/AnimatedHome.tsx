@@ -7,6 +7,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { HeroScene, FeelsBadge, Timeline } from './scene';
+import OutfitFeedback from './OutfitFeedback';
 import {
   clamp,
   HOUR_START,
@@ -115,24 +116,6 @@ export default function AnimatedHome({
   const [, setClockTick] = useState(0);
   const [reduced, setReduced] = useState(false);
   const [lastInteract, setLastInteract] = useState(0);
-
-  // Optional "what felt comfortable?" follow-up after a too_cold / too_hot verdict.
-  const [comfortFor, setComfortFor] = useState<Verdict | null>(null);
-  const [worn, setWorn] = useState<string[]>([]);
-
-  const handleVerdict = (v: Verdict) => {
-    if (v === 'just_right') {
-      onFeedback('just_right');
-      return;
-    }
-    // Offer the comfort picker before recording a mismatch.
-    setComfortFor(v);
-    setWorn([]);
-  };
-  const closeComfort = () => {
-    setComfortFor(null);
-    setWorn([]);
-  };
 
   const tourStart = useRef<number | null>(null);
   const rafRef = useRef(0);
@@ -351,147 +334,13 @@ export default function AnimatedHome({
           <span className="text-xs text-on-surface-variant">{description}</span>
         </div>
         <Timeline t={t} prominent={controls} onScrub={onScrub} />
-        <FeedbackRow onFeedback={handleVerdict} disabled={!feedbackEnabled} active={comfortFor} />
-        {feedbackEnabled && comfortFor ? (
-          <ComfortPicker
-            verdict={comfortFor}
-            worn={worn}
-            onToggle={(id) =>
-              setWorn((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]))
-            }
-            onSave={() => {
-              onFeedback(comfortFor, worn);
-              closeComfort();
-            }}
-            onSkip={() => {
-              onFeedback(comfortFor);
-              closeComfort();
-            }}
-          />
+        {feedbackEnabled ? (
+          <OutfitFeedback rec={rec} onFeedback={onFeedback} message={feedbackMsg} />
         ) : !signedIn ? (
           <p className="px-5 pb-4 text-sm text-on-surface-variant">{tr('feedback.signInToAdd')}</p>
-        ) : !isToday ? (
+        ) : (
           <p className="px-5 pb-4 text-sm text-on-surface-variant">{tr('feedback.todayOnly')}</p>
-        ) : feedbackMsg ? (
-          <p className="px-5 pb-4 text-sm text-on-surface-variant">{feedbackMsg}</p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-// ── Feedback row — icon tones (snowflake / sun / check) ────────
-function FeedbackRow({
-  onFeedback,
-  disabled,
-  active,
-}: {
-  onFeedback: (v: Verdict) => void;
-  disabled?: boolean;
-  active?: Verdict | null;
-}) {
-  const tr = useT();
-  const items = [
-    { id: 'too_cold' as const, icon: 'snowflake' as const, label: tr('feedback.tooCold'), tone: 'cool' },
-    { id: 'too_hot' as const, icon: 'sun' as const, label: tr('feedback.tooHot'), tone: 'warm' },
-    { id: 'just_right' as const, icon: 'check' as const, label: tr('feedback.perfect'), tone: 'just' },
-  ];
-  const tones: Record<string, { cls: string; ring: string }> = {
-    cool: { cls: 'bg-cool-container text-cool', ring: 'border-cool' },
-    warm: { cls: 'bg-warm-container text-warm', ring: 'border-warm' },
-    just: { cls: 'bg-just-container text-just', ring: 'border-just' },
-  };
-  return (
-    <div className="flex gap-2.5 px-5 pb-4 pt-2">
-      {items.map((it) => {
-        const tone = tones[it.tone];
-        const isActive = active === it.id;
-        return (
-          <button
-            key={it.id}
-            aria-label={it.label}
-            disabled={disabled}
-            onClick={() => onFeedback(it.id)}
-            className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border-2 text-sm font-medium transition-shadow ${tone.cls} ${
-              isActive ? tone.ring : 'border-transparent'
-            } ${disabled ? 'cursor-not-allowed opacity-40' : 'hover:shadow-[var(--md-elev-1)]'}`}
-          >
-            <Icon name={it.icon} size={20} strokeWidth={1.8} />
-            <span className="hidden sm:inline">{it.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Comfort picker — "what did you wear that felt comfortable?" ──
-function ComfortPicker({
-  verdict,
-  worn,
-  onToggle,
-  onSave,
-  onSkip,
-}: {
-  verdict: Verdict;
-  worn: string[];
-  onToggle: (id: string) => void;
-  onSave: () => void;
-  onSkip: () => void;
-}) {
-  const tr = useT();
-  const direction = tr(verdict === 'too_cold' ? 'comfort.warmer' : 'comfort.cooler');
-  return (
-    <div className="mx-5 mb-4 rounded-2xl border border-outline-variant bg-surface-low p-4">
-      <p className="text-sm font-medium text-on-surface">{tr('comfort.question')}</p>
-      <p className="mt-0.5 text-xs text-on-surface-variant">{tr('comfort.hint', { direction })}</p>
-      <div className="mt-3 flex flex-col gap-3">
-        {CATEGORIES.map((cat) => {
-          const catItems = DEFAULT_CATALOG.filter((i) => i.category === cat);
-          if (catItems.length === 0) return null;
-          return (
-            <div key={cat}>
-              <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-primary">
-                {tr(`category.${cat}`)}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {catItems.map((item) => {
-                  const on = worn.includes(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => onToggle(item.id)}
-                      aria-pressed={on}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                        on
-                          ? 'border-transparent bg-secondary-container text-on-secondary-container'
-                          : 'border-outline-variant text-on-surface-variant hover:bg-surface-high'
-                      }`}
-                    >
-                      <Icon name={getItemIcon(item)} size={15} strokeWidth={1.6} />
-                      {itemName(tr, item)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-4 flex items-center justify-end gap-2">
-        <button
-          onClick={onSkip}
-          className="rounded-full px-4 py-2 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-high"
-        >
-          {tr('comfort.skip')}
-        </button>
-        <button
-          onClick={onSave}
-          disabled={worn.length === 0}
-          className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-on-primary shadow-[var(--md-elev-1)] transition-opacity hover:opacity-90 disabled:opacity-40"
-        >
-          {tr('comfort.save')}
-        </button>
+        )}
       </div>
     </div>
   );
